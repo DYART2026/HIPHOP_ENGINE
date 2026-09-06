@@ -5,23 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title id="page-title">Plataforma hip.hop 2D v3.0</title>
 
-<!-- 📊 Google Analytics 4 (GA4) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8YBRS5NX34"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-8YBRS5NX34');
+<!-- 1. Carrega o mapa de configurações de todas as cidades -->
+<script src="js/config.js"></script>
 
-function registrarMetricaGA4(evento, categoria, rotulo) {
-    if (typeof gtag === 'function') {
-        gtag('event', evento, {
-            'event_category': categoria,
-            'event_label': rotulo,
-            'custom_label': rotulo // Garantia extra para o GA4 capturar o nome do ponto
-        });
-    }
-}
+<!-- 2. Roteador de Cidades + Injeção Dinâmica do GA4 -->
+<script>
+  // Lê a variável 'cidade' da URL (?cidade=friburgo ou ?cidade=rio)
+  const urlParams = new URLSearchParams(window.location.search);
+  const cidadeAtiva = urlParams.get('cidade') ? urlParams.get('cidade').toLowerCase() : 'friburgo';
+
+  // Carrega as credenciais da cidade ou assume Friburgo como padrão de segurança
+  const CONFIG_CIDADE = CITY_CONFIGS[cidadeAtiva] || CITY_CONFIGS['friburgo'];
+
+  // Injeta a tag script do GA4 referente à cidade selecionada
+  const gaScript = document.createElement('script');
+  gaScript.async = true;
+  gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${CONFIG_CIDADE.gaMeasurementId}`;
+  document.head.appendChild(gaScript);
+
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', CONFIG_CIDADE.gaMeasurementId);
+
+  function registrarMetricaGA4(evento, categoria, rotulo) {
+      if (typeof gtag === 'function') {
+          gtag('event', evento, {
+              'event_category': categoria,
+              'event_label': rotulo,
+              'custom_label': rotulo,
+              'municipio': CONFIG_CIDADE.cityName
+          });
+      }
+  }
 </script>
 
 <!-- 🗺️ Leaflet CSS e JS -->
@@ -31,26 +47,26 @@ function registrarMetricaGA4(evento, categoria, rotulo) {
 <style>
 * { box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
 html, body {
-height: 100%;
-width: 100%;
-margin: 0;
-padding: 0;
-font-family: 'Segoe UI', Arial, sans-serif;
-background: #f7fafc;
-color: #2d3748;
-display: flex;
-flex-direction: column;
-overflow: hidden;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f7fafc;
+  color: #2d3748;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 #header {
-background: #1a365d;
-color: white;
-padding: 8px 12px;
-box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-flex-shrink: 0;
-display: flex;
-align-items: center;
-justify-content: space-between;
+  background: #1a365d;
+  color: white;
+  padding: 8px 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .header-left { display: flex; align-items: center; gap: 10px; }
 .header-logo { height: 36px; width: auto; max-width: 120px; object-fit: contain; }
@@ -59,121 +75,121 @@ justify-content: space-between;
 
 .lang-selector { display: flex; gap: 4px; }
 .btn-lang {
-background: rgba(255,255,255,0.15);
-color: white;
-border: 1px solid rgba(255,255,255,0.3);
-padding: 4px 8px;
-font-size: 11px;
-font-weight: bold;
-border-radius: 4px;
-cursor: pointer;
-transition: all 0.2s;
-display: none;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: none;
 }
 .btn-lang.active { background: #e67e22; border-color: #e67e22; display: inline-block; }
 
 #tour-control {
-background: #ffffff;
-padding: 8px 12px;
-box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-text-align: center;
-flex-shrink: 0;
-border-bottom: 1px solid #e2e8f0;
-z-index: 1000;
-display: flex;
-gap: 8px;
+  background: #ffffff;
+  padding: 8px 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  text-align: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e2e8f0;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
 }
 .btn-tour {
-background: #e67e22;
-color: white;
-border: none;
-padding: 10px 8px;
-font-size: 12px;
-font-weight: bold;
-border-radius: 6px;
-cursor: pointer;
-flex: 2;
-transition: background 0.2s;
+  background: #e67e22;
+  color: white;
+  border: none;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: 2;
+  transition: background 0.2s;
 }
 .btn-tour.ativo { background: #c0392b !important; animation: pulse 1.5s infinite; }
 .btn-localizacao {
-background: #2b6cb0;
-color: white;
-border: none;
-padding: 10px 8px;
-font-size: 12px;
-font-weight: bold;
-border-radius: 6px;
-cursor: pointer;
-flex: 1;
-transition: background 0.2s;
+  background: #2b6cb0;
+  color: white;
+  border: none;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.2s;
 }
 
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
 #filter-bar {
-background: #edf2f7;
-padding: 6px 12px;
-display: flex;
-gap: 6px;
-overflow-x: auto;
-white-space: nowrap;
-border-bottom: 1px solid #cbd5e0;
-flex-shrink: 0;
--webkit-overflow-scrolling: touch;
+  background: #edf2f7;
+  padding: 6px 12px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  border-bottom: 1px solid #cbd5e0;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
 }
 #filter-bar::-webkit-scrollbar { display: none; }
 .btn-filter {
-background: #ffffff;
-color: #4a5568;
-border: 1px solid #cbd5e0;
-padding: 4px 10px;
-font-size: 11px;
-font-weight: 600;
-border-radius: 12px;
-cursor: pointer;
+  background: #ffffff;
+  color: #4a5568;
+  border: 1px solid #cbd5e0;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
 }
 .btn-filter.active { background: #1a365d; color: white; border-color: #1a365d; }
 
 #status-carregamento {
-font-size: 11px;
-font-weight: 600;
-color: #4a5568;
-padding: 6px;
-text-align: center;
-background: #edf2f7;
-flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a5568;
+  padding: 6px;
+  text-align: center;
+  background: #edf2f7;
+  flex-shrink: 0;
 }
 
 #map {
-width: 100%;
-height: calc(100vh - 140px);
-min-height: 350px;
-flex-grow: 1;
-background: #e2e8f0;
-z-index: 1;
+  width: 100%;
+  height: calc(100vh - 140px);
+  min-height: 350px;
+  flex-grow: 1;
+  background: #e2e8f0;
+  z-index: 1;
 }
 
 audio { width: 100%; height: 36px; margin-top: 6px; display: block; }
 .badge-tag {
-display: inline-block;
-padding: 2px 6px;
-font-size: 10px;
-font-weight: bold;
-border-radius: 4px;
-color: white;
-margin-bottom: 4px;
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 4px;
+  color: white;
+  margin-bottom: 4px;
 }
 .tag-estrada { background-color: #27ae60; }
 .tag-urbano { background-color: #2b6cb0; }
 .tag-categoria { background-color: #8e44ad; margin-left: 4px; }
 .popup-img {
-width: 100%;
-max-height: 140px;
-object-fit: cover;
-border-radius: 6px;
-margin-bottom: 6px;
-display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  display: block;
 }
 
 .leaflet-popup-content-wrapper { padding: 4px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
@@ -183,23 +199,23 @@ display: block;
 <body>
 
 <div id="header">
-<div class="header-left">
-<img id="header-logo" src="" alt="Logo" class="header-logo" style="display:none;">
-<div class="header-text">
-<h2 id="header-titulo">Sincronizando...</h2>
-<p id="header-subtitulo"></p>
-</div>
-</div>
-<div class="lang-selector" id="lang-container">
-<button class="btn-lang" id="btn-pt" onclick="trocarIdioma('PT')">PT</button>
-<button class="btn-lang" id="btn-en" onclick="trocarIdioma('EN')">EN</button>
-<button class="btn-lang" id="btn-es" onclick="trocarIdioma('ES')">ES</button>
-</div>
+  <div class="header-left">
+    <img id="header-logo" src="" alt="Logo" class="header-logo" style="display:none;">
+    <div class="header-text">
+      <h2 id="header-titulo">Sincronizando...</h2>
+      <p id="header-subtitulo"></p>
+    </div>
+  </div>
+  <div class="lang-selector" id="lang-container">
+    <button class="btn-lang" id="btn-pt" onclick="trocarIdioma('PT')">PT</button>
+    <button class="btn-lang" id="btn-en" onclick="trocarIdioma('EN')">EN</button>
+    <button class="btn-lang" id="btn-es" onclick="trocarIdioma('ES')">ES</button>
+  </div>
 </div>
 
 <div id="tour-control">
-<button id="btn-tour-txt" class="btn-tour" onclick="iniciarTourPresencial()">🚀 Iniciar Tour Presencial</button>
-<button id="btn-gps-txt" class="btn-localizacao" onclick="centralizarNoUsuario()">📍 Onde estou</button>
+  <button id="btn-tour-txt" class="btn-tour" onclick="iniciarTourPresencial()">🚀 Iniciar Tour Presencial</button>
+  <button id="btn-gps-txt" class="btn-localizacao" onclick="centralizarNoUsuario()">📍 Onde estou</button>
 </div>
 
 <div id="filter-bar"></div>
@@ -208,15 +224,7 @@ display: block;
 <div id="map"></div>
 
 <script>
-const ID_PLANILHA_PADRAO = '1oxeXlXTxybVMNYWzauCfp_GATkFzVoXqpTtvKKmmkHg';
-const BASE_GITHUB_RAW = 'https://raw.githubusercontent.com/NABohrer/New_Test/main/baloes/';
-
-function obterIdPlanilhaURL() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('id') || ID_PLANILHA_PADRAO;
-}
-
-const ID_PLANILHA_ATIVA = obterIdPlanilhaURL();
+const BASE_ASSETS = 'assets/';
 
 let map;
 let currentTileLayer = null;
@@ -229,11 +237,11 @@ let listaCategoriasEncontradas = [];
 
 let configCliente = {
     tipoMapa: "OSM",
-    titulo: "Plataforma hip.hop Versão Multilingue 3.0",
-    subtitulo: "Mapa da Cidade do Rio de Janeiro",
-    logoUrl: BASE_GITHUB_RAW + "Logo_hiphop.png",
-    balaoE: BASE_GITHUB_RAW + "Balao_E.png",
-    balaoU: BASE_GITHUB_RAW + "Balao_U.png"
+    titulo: `Plataforma hip.hop - ${CONFIG_CIDADE.cityName}`,
+    subtitulo: `Mapa Turístico de ${CONFIG_CIDADE.cityName}`,
+    logoUrl: CONFIG_CIDADE.logo || `${BASE_ASSETS}logos/logo-hiphop.png`,
+    balaoE: `${BASE_ASSETS}baloes/balao-turismo.png`,
+    balaoU: `${BASE_ASSETS}baloes/balao-turismo.png`
 };
 
 let marcadorUsuario = null;
@@ -252,22 +260,24 @@ function normalizarTexto(txt) {
     return String(txt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
-function processarUrlDireta(urlInput, fallbackNome) {
-    if (!urlInput) return BASE_GITHUB_RAW + fallbackNome;
-    let url = String(urlInput).trim();
-    if (url.includes('raw.githubusercontent.com')) return url;
-    if (url.includes('github.com')) {
-        return url.replace('github.com', 'raw.githubusercontent.com')
-                  .replace('/blob/', '/')
-                  .replace('/raw/refs/heads/', '/')
-                  .replace('?raw=true', '');
-    }
+function processarUrlMidia(caminhoInput, subpastaPadrao, fallbackNome) {
+    if (!caminhoInput) return `${BASE_ASSETS}${subpastaPadrao}/${fallbackNome}`;
+    let url = String(caminhoInput).trim();
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return BASE_GITHUB_RAW + url.split('/').pop();
+    return `${BASE_ASSETS}${subpastaPadrao}/${url.split('/').pop()}`;
+}
+
+function processarAudioLocal(nomeAudio, idioma) {
+    if (!nomeAudio) return "";
+    if (nomeAudio.startsWith('http://') || nomeAudio.startsWith('https://')) return nomeAudio;
+    
+    let limpo = nomeAudio.split('/').pop().replace('.mp3', '');
+    return `${BASE_ASSETS}audios/${CONFIG_CIDADE.folderName}/${idioma.toLowerCase()}/${limpo}.mp3`;
 }
 
 function initMapOSM() {
-    map = L.map('map').setView([-22.9068, -43.1729], 15);
+    const coords = CONFIG_CIDADE.defaultCoords || [-22.2818, -42.5306];
+    map = L.map('map').setView(coords, 14);
     carregarParametrosEAtivarDados();
 }
 
@@ -307,8 +317,11 @@ function aplicarCamadaMapa(tipo) {
     }).addTo(map);
 }
 
-async function buscarDadosGviz(spreadsheetId, paramAba) {
-    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&${paramAba}`;
+async function buscarDadosGviz(urlCompletaOuId, paramAba) {
+    let url = urlCompletaOuId.startsWith('http') 
+        ? `${urlCompletaOuId}&${paramAba}` 
+        : `https://docs.google.com/spreadsheets/d/${urlCompletaOuId}/gviz/tq?tqx=out:json&${paramAba}`;
+
     const resposta = await fetch(url);
     if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
     const texto = await resposta.text();
@@ -324,7 +337,7 @@ async function carregarParametrosEAtivarDados() {
     
     for (let opt of opcoesParam) {
         try {
-            linhasParam = await buscarDadosGviz(ID_PLANILHA_ATIVA, opt);
+            linhasParam = await buscarDadosGviz(CONFIG_CIDADE.sheetUrl, opt);
             if (linhasParam && linhasParam.length > 0) break;
         } catch (e) {}
     }
@@ -342,11 +355,11 @@ async function carregarParametrosEAtivarDados() {
             } else if (chave.includes("titulo")) {
                 configCliente.titulo = valor;
             } else if (chave.includes("logo")) {
-                configCliente.logoUrl = processarUrlDireta(valor, "Logo_hiphop.png");
+                configCliente.logoUrl = processarUrlMidia(valor, "logos", "logo-friburgo.png");
             } else if (chave.includes("balao_e")) {
-                configCliente.balaoE = processarUrlDireta(valor, "Balao_E.png");
+                configCliente.balaoE = processarUrlMidia(valor, "baloes", "balao-turismo.png");
             } else if (chave.includes("balao_u")) {
-                configCliente.balaoU = processarUrlDireta(valor, "Balao_U.png");
+                configCliente.balaoU = processarUrlMidia(valor, "baloes", "balao-turismo.png");
             } else if (chave.includes("idiomas")) {
                 idiomasHabilitados = valor.toUpperCase().split(',').map(s => s.trim()).filter(Boolean);
             }
@@ -373,13 +386,13 @@ async function carregarDadosPontos() {
     
     for (let opt of opcoesDados) {
         try {
-            linhasDados = await buscarDadosGviz(ID_PLANILHA_ATIVA, opt);
+            linhasDados = await buscarDadosGviz(CONFIG_CIDADE.sheetUrl, opt);
             if (linhasDados && linhasDados.length > 0) break;
         } catch (err) {}
     }
 
     if (!linhasDados || linhasDados.length === 0) {
-        document.getElementById("status-carregamento").innerHTML = `❌ Erro ao acessar os pontos da planilha.`;
+        document.getElementById("status-carregamento").innerHTML = `❌ Erro ao acessar os pontos da planilha de ${CONFIG_CIDADE.cityName}.`;
         return;
     }
 
@@ -414,16 +427,16 @@ async function carregarDadosPontos() {
                 let mapaAudios = {};
 
                 mapaResumos[ordemLangs[0]] = val(4);
-                mapaAudios[ordemLangs[0]] = processarUrlDireta(val(5), "");
+                mapaAudios[ordemLangs[0]] = processarAudioLocal(val(5), ordemLangs[0]);
 
                 if (ordemLangs[1]) {
                     mapaResumos[ordemLangs[1]] = val(9);
-                    mapaAudios[ordemLangs[1]] = processarUrlDireta(val(10), "");
+                    mapaAudios[ordemLangs[1]] = processarAudioLocal(val(10), ordemLangs[1]);
                 }
 
                 if (ordemLangs[2]) {
                     mapaResumos[ordemLangs[2]] = val(11);
-                    mapaAudios[ordemLangs[2]] = processarUrlDireta(val(12), "");
+                    mapaAudios[ordemLangs[2]] = processarAudioLocal(val(12), ordemLangs[2]);
                 }
 
                 pontosHistoricos.push({
