@@ -6,7 +6,6 @@ const CITY_CONFIGS = {
     gaMeasurementId: "G-XXXXXXXXXX_FRIBURGO", // Cole o ID real do GA4 de Friburgo
     sheetUrl: "https://docs.google.com/spreadsheets/d/1wDoBV28qzHMrj4_yz-gsLPbtBsyYvMcvKS-jlzjuMi8/gviz/tq?",
     defaultCoords: [-22.2818, -42.5306],
-    logo: "assets/logos/logo-friburgo.png"
   },
   "rio": {
     cityName: "Rio de Janeiro",
@@ -14,6 +13,5 @@ const CITY_CONFIGS = {
     gaMeasurementId: "G-XXXXXXXXXX_RIO", // Cole o ID real do GA4 do Rio
     sheetUrl: "https://docs.google.com/spreadsheets/d/1oxeXlXTxybVMNYWzauCfp_GATkFzVoXqpTtvKKmmkHg/gviz/tq?",
     defaultCoords: [-22.9068, -43.1729],
-    logo: "assets/logos/logo-rio.png"
   }
 };
