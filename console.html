@@ -50,7 +50,7 @@ button:hover { background: #2b6cb0; }
 <div class="container">
   <header>
     <div class="brand-header">
-      <img id="logoConsole" alt="Logo" style="display: none;">
+      <img id="logoConsole" src="https://raw.githubusercontent.com/DYART2026/HIPHOP_ENGINE/main/logos/HIPHOP-Logo.png" alt="Logo">
       <div class="brand-titles">
         <h1 id="tituloConsole">Plataforma hip.hop Versão Multilíngue 3.0</h1>
         <h2 id="subtituloConsole">Console de Gestão - Municípios implantados</h2>
@@ -133,13 +133,10 @@ async function carregarParametrosGerais() {
                     document.getElementById('subtituloConsole').innerText = valor;
                 }
                 if(chave.includes('logo') && valor) {
-                    // Trata qualquer formato de URL do GitHub para imagem bruta Raw
                     let imgUrl = valor.replace('github.com', 'raw.githubusercontent.com')
                                       .replace('/blob/', '/')
                                       .replace('?raw=true', '');
-                    const img = document.getElementById('logoConsole');
-                    img.src = imgUrl;
-                    img.style.display = 'block';
+                    document.getElementById('logoConsole').src = imgUrl;
                 }
             }
         });
