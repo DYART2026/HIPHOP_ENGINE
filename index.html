@@ -10,14 +10,11 @@
 
 <!-- 2. Roteador de Cidades + Injeção Dinâmica do GA4 -->
 <script>
-  // Lê a variável 'cidade' ou 'id' da URL (?cidade=friburgo ou ?cidade=rio)
   const urlParams = new URLSearchParams(window.location.search);
   const cidadeAtiva = urlParams.get('cidade') ? urlParams.get('cidade').toLowerCase() : 'friburgo';
 
-  // Carrega as credenciais da cidade ou assume Friburgo como padrão de segurança
   const CONFIG_CIDADE = CITY_CONFIGS[cidadeAtiva] || CITY_CONFIGS['friburgo'];
 
-  // Injeta a tag script do GA4 referente à cidade selecionada
   const gaScript = document.createElement('script');
   gaScript.async = true;
   gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${CONFIG_CIDADE.gaMeasurementId}`;
@@ -256,19 +253,26 @@ function normalizarTexto(txt) {
     return String(txt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
+// Converte qualquer URL do GitHub para imagem bruta RAW e trata caminhos locais
 function processarUrlMidia(caminhoInput, subpastaPadrao, fallbackNome) {
     if (!caminhoInput) return `${BASE_ASSETS}${subpastaPadrao}/${fallbackNome}`;
     let url = String(caminhoInput).trim();
-    
-    // Tratamento universal para URLs do GitHub
+
+    // Prioridade máxima: se for link do GitHub, converte para Raw
     if (url.includes('github.com')) {
-        url = url.replace('github.com', 'raw.githubusercontent.com')
-                 .replace('/blob/', '/')
-                 .replace('?raw=true', '');
+        return url.replace('github.com', 'raw.githubusercontent.com')
+                  .replace('/blob/', '/')
+                  .replace('?raw=true', '');
     }
     
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `${BASE_ASSETS}${subpastaPadrao}/${url.split('/').pop()}`;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+
+    let nomeArquivo = url.split('/').pop();
+    if (!nomeArquivo) nomeArquivo = fallbackNome;
+    
+    return `${BASE_ASSETS}${subpastaPadrao}/${nomeArquivo}`;
 }
 
 function processarAudioLocal(nomeAudio, idioma) {
@@ -418,7 +422,7 @@ async function carregarDadosPontos() {
             let latNum = parseFloat(latRaw);
             let lngNum = parseFloat(lngRaw);
 
-            // 📍 LEITURA DIRETA DO LINK DO BALÃO DA COLUNA D (ÍNDICE 3) DA ABA DADOS
+            // Lê e converte a URL do GitHub da Coluna D (índice 3)
             let urlBalaoDireta = processarUrlMidia(val(3), "baloes", "Balao_E.png");
 
             if (!isNaN(latNum) && !isNaN(lngNum)) {
@@ -446,7 +450,7 @@ async function carregarDadosPontos() {
                     nome: nomePatrimonio,
                     lat: latNum,
                     lng: lngNum,
-                    linkBalao: urlBalaoDireta, // Link exclusivo do balão deste ponto
+                    linkBalao: urlBalaoDireta,
                     raio: parseInt(val(6)) || 30,
                     categoria: cat,
                     foto: formatarLinkImagemDrive(val(8)),
@@ -477,7 +481,6 @@ function plotarPinsNoMapa() {
     pontosHistoricos.forEach(ponto => {
         if (categoriaAtiva !== "TODAS" && ponto.categoria !== categoriaAtiva) return;
 
-        // 🎨 ÍCONE GERADO A PARTIR DO LINK DO BALÃO ESPECÍFICO DO PONTO
         const customIcon = L.icon({
             iconUrl: ponto.linkBalao,
             iconSize: [36, 46],
