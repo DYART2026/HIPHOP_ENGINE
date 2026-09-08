@@ -52,7 +52,7 @@ button:hover { background: #2b6cb0; }
     <div class="brand-header">
       <img id="logoConsole" alt="Logo" style="display: none;">
       <div class="brand-titles">
-        <h1 id="tituloConsole">Carregando título...</h1>
+        <h1 id="tituloConsole">Plataforma hip.hop Versão Multilíngue 3.0</h1>
         <h2 id="subtituloConsole">Console de Gestão - Municípios implantados</h2>
       </div>
     </div>
@@ -122,22 +122,23 @@ async function carregarParametrosGerais() {
         const rows = jsonPuro.table.rows || [];
 
         rows.forEach(r => {
-            if(r && r.c && r.c[0] && r.c[1]) {
+            if(r && r.c && r.c[0] && r.c[0].v && r.c[1] && r.c[1].v) {
                 const chave = String(r.c[0].v).toLowerCase().trim();
                 let valor = String(r.c[1].v).trim();
 
-                if(chave.includes('titulo') && !chave.includes('sub') && valor) {
+                if((chave === 'titulo' || chave === 'título') && valor) {
                     document.getElementById('tituloConsole').innerText = valor;
                 }
-                if(chave.includes('subtitulo') && valor) {
+                if((chave === 'subtitulo' || chave === 'subtítulo') && valor) {
                     document.getElementById('subtituloConsole').innerText = valor;
                 }
                 if(chave.includes('logo') && valor) {
-                    valor = valor.replace('github.com', 'raw.githubusercontent.com')
-                                 .replace('/blob/', '/')
-                                 .replace('?raw=true', '');
+                    // Trata qualquer formato de URL do GitHub para imagem bruta Raw
+                    let imgUrl = valor.replace('github.com', 'raw.githubusercontent.com')
+                                      .replace('/blob/', '/')
+                                      .replace('?raw=true', '');
                     const img = document.getElementById('logoConsole');
-                    img.src = valor;
+                    img.src = imgUrl;
                     img.style.display = 'block';
                 }
             }
@@ -147,52 +148,67 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega a lista de municípios da aba MUNICIPIOS (Lendo Colunas A, B e C, ignorando o cabeçalho)
+// 2. Carrega a lista de municípios (suporta 'MUNICIPIOS' ou 'MUNICÍPIOS')
 async function carregarListaMunicipios() {
+    let rows = [];
+    
+    // Tentativa 1: Nome da aba 'MUNICIPIOS'
     try {
-        const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
-        const resp = await fetch(urlGvizMun);
-        const txt = await resp.text();
-        const jsonPuro = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
-        const rows = jsonPuro.table.rows || [];
+        let urlGviz = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
+        let resp = await fetch(urlGviz);
+        let txt = await resp.text();
+        let jsonPuro = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+        rows = jsonPuro.table.rows || [];
+    } catch(e) {}
 
-        const select = document.getElementById('seletorMunicipio');
-        select.innerHTML = '';
+    // Tentativa 2: Nome da aba com acento 'MUNICÍPIOS' (Fallback)
+    if (!rows || rows.length === 0) {
+        try {
+            let urlGviz = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNIC%C3%8DPIOS`;
+            let resp = await fetch(urlGviz);
+            let txt = await resp.text();
+            let jsonPuro = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+            rows = jsonPuro.table.rows || [];
+        } catch(e) {}
+    }
 
-        let idDaUrl = new URLSearchParams(window.location.search).get('id');
+    const select = document.getElementById('seletorMunicipio');
+    select.innerHTML = '';
 
-        rows.forEach((r) => {
-            if(r && r.c && r.c[0] && r.c[0].v && r.c[1] && r.c[1].v) {
-                const nomeMunicipio = String(r.c[0].v).trim();
-                const idPlanilha = String(r.c[1].v).trim();
-                const urlLooker = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
+    if (!rows || rows.length === 0) {
+        select.innerHTML = '<option value="">Erro ao carregar municípios - Verifique a aba MUNICIPIOS</option>';
+        return;
+    }
 
-                // Ignora a linha de cabeçalho (ex: "MUNICÍPIO", "MUNICIPIO", "ID PLANILHA...")
-                const nomeLower = nomeMunicipio.toLowerCase();
-                if(!nomeLower.includes('municipio') && !nomeLower.includes('município')) {
-                    const opt = document.createElement('option');
-                    opt.value = idPlanilha;
-                    opt.innerText = nomeMunicipio;
-                    
-                    if (urlLooker) opt.setAttribute('data-looker', urlLooker);
+    let idDaUrl = new URLSearchParams(window.location.search).get('id');
 
-                    if (idDaUrl && idDaUrl === idPlanilha) {
-                        opt.selected = true;
-                    }
-                    select.appendChild(opt);
+    rows.forEach((r) => {
+        if(r && r.c && r.c[0] && r.c[0].v && r.c[1] && r.c[1].v) {
+            const nomeMunicipio = String(r.c[0].v).trim();
+            const idPlanilha = String(r.c[1].v).trim();
+            const urlLooker = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
+
+            const nomeLower = nomeMunicipio.toLowerCase();
+            // Ignora o cabeçalho
+            if(!nomeLower.includes('municipio') && !nomeLower.includes('município')) {
+                const opt = document.createElement('option');
+                opt.value = idPlanilha;
+                opt.innerText = nomeMunicipio;
+                
+                if (urlLooker) opt.setAttribute('data-looker', urlLooker);
+
+                if (idDaUrl && idDaUrl === idPlanilha) {
+                    opt.selected = true;
                 }
+                select.appendChild(opt);
             }
-        });
-
-        if (select.value) {
-            alternarMunicipio();
-        } else {
-            select.innerHTML = '<option value="">Nenhum município cadastrado</option>';
         }
+    });
 
-    } catch(e) {
-        console.log("Erro ao carregar aba MUNICIPIOS.");
-        document.getElementById('seletorMunicipio').innerHTML = '<option value="">Erro ao carregar municípios</option>';
+    if (select.value) {
+        alternarMunicipio();
+    } else {
+        select.innerHTML = '<option value="">Nenhum município cadastrado</option>';
     }
 }
 
@@ -203,7 +219,6 @@ function alternarMunicipio() {
     const optionSelecionada = select.options[select.selectedIndex];
     
     if (idSelecionada) {
-        // Atualiza a URL do Iframe do Looker Studio com base na Coluna C
         const urlLookerEspecifica = optionSelecionada ? optionSelecionada.getAttribute('data-looker') : '';
         if (urlLookerEspecifica) {
             document.getElementById('lookerIframe').src = urlLookerEspecifica;
@@ -248,7 +263,6 @@ async function auditarMunicipio(idPlanilhaDados) {
         document.getElementById("stat-audios").innerText = "0";
     }
 
-    // Geração do Link e QR Code apontando para index-2.html com a ID do Município selecionado
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
     const urlFinal = `${baseUrl}/index-2.html?id=${idPlanilhaDados}`;
 
