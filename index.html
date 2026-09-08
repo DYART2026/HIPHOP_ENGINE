@@ -707,5 +707,22 @@ function formatarLinkImagemDrive(url) {
 
 window.onload = initMapOSM;
 </script>
+<!-- Trava de Inspeção e Menu de Contexto (F12 / Botão Direito) -->
+  <script>
+    // Bloqueia o menu do botão direito
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // Bloqueia atalhos de inspeção (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S)
+    document.addEventListener('keydown', event => {
+      if (
+        event.key === 'F12' ||
+        (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i' || event.key === 'J' || event.key === 'j' || event.key === 'C' || event.key === 'c')) ||
+        (event.ctrlKey && (event.key === 'U' || event.key === 'u' || event.key === 'S' || event.key === 's'))
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    });
+  </script>  
 </body>
 </html>
