@@ -112,7 +112,7 @@ button:hover { background: #2b6cb0; }
 <script>
 const ID_PLANILHA_PARAMETROS = '1034bcy9azlYnWKnTV-TdtbRg3eG-EJVt28dvaqwJGMY';
 
-// 1. Carrega Título, Subtítulo, Logo e Looker da aba PARAMETROS
+// 1. Carrega Título, Subtítulo e Logo da aba PARAMETROS
 async function carregarParametrosGerais() {
     try {
         const urlGvizParam = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=PARAMETROS`;
@@ -140,9 +140,6 @@ async function carregarParametrosGerais() {
                     img.src = valor;
                     img.style.display = 'block';
                 }
-                if((chave.includes('looker') || chave.includes('url')) && valor) {
-                    document.getElementById('lookerIframe').src = valor;
-                }
             }
         });
     } catch(e) {
@@ -150,7 +147,7 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega a lista de municípios da aba MUNICIPIOS
+// 2. Carrega a lista de municípios da aba MUNICIPIOS (Lendo Colunas A, B e C, ignorando o cabeçalho)
 async function carregarListaMunicipios() {
     try {
         const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
@@ -164,17 +161,21 @@ async function carregarListaMunicipios() {
 
         let idDaUrl = new URLSearchParams(window.location.search).get('id');
 
-        rows.forEach((r, index) => {
-            if(r && r.c && r.c[0] && r.c[1]) {
+        rows.forEach((r) => {
+            if(r && r.c && r.c[0] && r.c[0].v && r.c[1] && r.c[1].v) {
                 const nomeMunicipio = String(r.c[0].v).trim();
                 const idPlanilha = String(r.c[1].v).trim();
+                const urlLooker = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
 
-                // Ignora o cabeçalho caso esteja escrito MUNICIPIO
-                if(nomeMunicipio.toLowerCase() !== 'municipio') {
+                // Ignora a linha de cabeçalho (ex: "MUNICÍPIO", "MUNICIPIO", "ID PLANILHA...")
+                const nomeLower = nomeMunicipio.toLowerCase();
+                if(!nomeLower.includes('municipio') && !nomeLower.includes('município')) {
                     const opt = document.createElement('option');
                     opt.value = idPlanilha;
                     opt.innerText = nomeMunicipio;
                     
+                    if (urlLooker) opt.setAttribute('data-looker', urlLooker);
+
                     if (idDaUrl && idDaUrl === idPlanilha) {
                         opt.selected = true;
                     }
@@ -183,9 +184,8 @@ async function carregarListaMunicipios() {
             }
         });
 
-        // Executa a auditoria para o município selecionado
         if (select.value) {
-            auditarMunicipio(select.value);
+            alternarMunicipio();
         } else {
             select.innerHTML = '<option value="">Nenhum município cadastrado</option>';
         }
@@ -196,7 +196,24 @@ async function carregarListaMunicipios() {
     }
 }
 
-// 3. Audita a aba DADOS do município selecionado e gera o QR Code
+// 3. Executado ao trocar o município no Menu Suspenso
+function alternarMunicipio() {
+    const select = document.getElementById('seletorMunicipio');
+    const idSelecionada = select.value;
+    const optionSelecionada = select.options[select.selectedIndex];
+    
+    if (idSelecionada) {
+        // Atualiza a URL do Iframe do Looker Studio com base na Coluna C
+        const urlLookerEspecifica = optionSelecionada ? optionSelecionada.getAttribute('data-looker') : '';
+        if (urlLookerEspecifica) {
+            document.getElementById('lookerIframe').src = urlLookerEspecifica;
+        }
+
+        auditarMunicipio(idSelecionada);
+    }
+}
+
+// 4. Audita a aba DADOS do município selecionado e gera o QR Code
 async function auditarMunicipio(idPlanilhaDados) {
     try {
         const urlGviz = `https://docs.google.com/spreadsheets/d/${idPlanilhaDados}/gviz/tq?tqx=out:json&sheet=DADOS`;
@@ -247,14 +264,6 @@ async function auditarMunicipio(idPlanilhaDados) {
     });
 
     document.getElementById("out-section").style.display = "block";
-}
-
-// Disparado ao alterar a opção no Menu Suspenso
-function alternarMunicipio() {
-    const idSelecionada = document.getElementById('seletorMunicipio').value;
-    if (idSelecionada) {
-        auditarMunicipio(idSelecionada);
-    }
 }
 
 function copiarLink() {
