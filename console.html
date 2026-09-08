@@ -23,7 +23,7 @@ header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 
 
 .section-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
 label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 12px; color: #4a5568; }
-input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; margin-bottom: 10px; }
+select, input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; margin-bottom: 10px; background: white; }
 button { background: #1a365d; color: white; border: none; padding: 12px 18px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; font-size: 13px; }
 button:hover { background: #2b6cb0; }
 
@@ -50,19 +50,27 @@ button:hover { background: #2b6cb0; }
 <div class="container">
   <header>
     <div class="brand-header">
-      <img id="logoConsole" src="https://github.com/NABohrer/New_Test/blob/main/baloes/Logo_hiphop.png?raw=true" alt="Logo">
+      <img id="logoConsole" alt="Logo" style="display: none;">
       <div class="brand-titles">
         <h1 id="tituloConsole">Carregando título...</h1>
-        <h2 id="subtituloConsole">Carregando subtítulo...</h2>
+        <h2 id="subtituloConsole">Console de Gestão - Municípios implantados</h2>
       </div>
     </div>
     <span class="badge-v3">v3.0 - GA4 Telemetry</span>
   </header>
 
-  <!-- MÓDULO 1: AUDITORIA AUTOMÁTICA DA PLANILHA -->
+  <!-- SELETOR DE MUNICÍPIOS -->
+  <div class="section-box">
+    <label for="seletorMunicipio">🏙️ Selecione o Município Implantado:</label>
+    <select id="seletorMunicipio" onchange="alternarMunicipio()">
+      <option value="">Carregando lista de municípios...</option>
+    </select>
+  </div>
+
+  <!-- MÓDULO 1: AUDITORIA AUTOMÁTICA DA PLANILHA DO MUNICÍPIO -->
   <div class="section-box">
     <div id="audit-results">
-      <label>Status e Diagnóstico da Planilha Ativa:</label>
+      <label>Status e Diagnóstico do Município Selecionado:</label>
       <div class="audit-grid">
         <div class="audit-card"><h3 id="stat-status">--</h3><p>Conexão Planilha</p></div>
         <div class="audit-card"><h3 id="stat-pontos">0</h3><p>Pontos Mapeados</p></div>
@@ -93,7 +101,7 @@ button:hover { background: #2b6cb0; }
     <div class="telemetry-frame" id="telemetry-container">
       <iframe 
         id="lookerIframe" 
-        src="https://datastudio.google.com/embed/reporting/1a9d52fa-5fcc-4a95-9ce5-5dd49a436faa/page/6ey7F" 
+        src="" 
         allowfullscreen 
         sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
       </iframe>
@@ -104,15 +112,10 @@ button:hover { background: #2b6cb0; }
 <script>
 const ID_PLANILHA_PARAMETROS = '1034bcy9azlYnWKnTV-TdtbRg3eG-EJVt28dvaqwJGMY';
 
-function obterIdDaUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('id') || ID_PLANILHA_PARAMETROS;
-}
-
-// Leitura Automática dos Parâmetros da Planilha
-async function carregarParametrosConsole(sheetId) {
+// 1. Carrega Título, Subtítulo, Logo e Looker da aba PARAMETROS
+async function carregarParametrosGerais() {
     try {
-        const urlGvizParam = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=PARAMETROS`;
+        const urlGvizParam = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=PARAMETROS`;
         const resp = await fetch(urlGvizParam);
         const txt = await resp.text();
         const jsonPuro = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
@@ -121,7 +124,7 @@ async function carregarParametrosConsole(sheetId) {
         rows.forEach(r => {
             if(r && r.c && r.c[0] && r.c[1]) {
                 const chave = String(r.c[0].v).toLowerCase().trim();
-                const valor = String(r.c[1].v).trim();
+                let valor = String(r.c[1].v).trim();
 
                 if(chave.includes('titulo') && !chave.includes('sub') && valor) {
                     document.getElementById('tituloConsole').innerText = valor;
@@ -130,7 +133,12 @@ async function carregarParametrosConsole(sheetId) {
                     document.getElementById('subtituloConsole').innerText = valor;
                 }
                 if(chave.includes('logo') && valor) {
-                    document.getElementById('logoConsole').src = valor;
+                    valor = valor.replace('github.com', 'raw.githubusercontent.com')
+                                 .replace('/blob/', '/')
+                                 .replace('?raw=true', '');
+                    const img = document.getElementById('logoConsole');
+                    img.src = valor;
+                    img.style.display = 'block';
                 }
                 if((chave.includes('looker') || chave.includes('url')) && valor) {
                     document.getElementById('lookerIframe').src = valor;
@@ -138,19 +146,60 @@ async function carregarParametrosConsole(sheetId) {
             }
         });
     } catch(e) {
-        console.log("Erro ao ler parâmetros da planilha. Mantendo valores padrão.");
+        console.log("Erro ao carregar parâmetros gerais.");
     }
 }
 
-async function auditarEGerar() {
-    const sheetId = obterIdDaUrl();
-
-    // 1. Busca Título, Subtítulo, Logo e URL do Looker na aba PARAMETROS
-    await carregarParametrosConsole(sheetId);
-
-    // 2. Auditoria da Planilha (aba DADOS)
+// 2. Carrega a lista de municípios da aba MUNICIPIOS
+async function carregarListaMunicipios() {
     try {
-        const urlGviz = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=DADOS`;
+        const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
+        const resp = await fetch(urlGvizMun);
+        const txt = await resp.text();
+        const jsonPuro = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+        const rows = jsonPuro.table.rows || [];
+
+        const select = document.getElementById('seletorMunicipio');
+        select.innerHTML = '';
+
+        let idDaUrl = new URLSearchParams(window.location.search).get('id');
+
+        rows.forEach((r, index) => {
+            if(r && r.c && r.c[0] && r.c[1]) {
+                const nomeMunicipio = String(r.c[0].v).trim();
+                const idPlanilha = String(r.c[1].v).trim();
+
+                // Ignora o cabeçalho caso esteja escrito MUNICIPIO
+                if(nomeMunicipio.toLowerCase() !== 'municipio') {
+                    const opt = document.createElement('option');
+                    opt.value = idPlanilha;
+                    opt.innerText = nomeMunicipio;
+                    
+                    if (idDaUrl && idDaUrl === idPlanilha) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                }
+            }
+        });
+
+        // Executa a auditoria para o município selecionado
+        if (select.value) {
+            auditarMunicipio(select.value);
+        } else {
+            select.innerHTML = '<option value="">Nenhum município cadastrado</option>';
+        }
+
+    } catch(e) {
+        console.log("Erro ao carregar aba MUNICIPIOS.");
+        document.getElementById('seletorMunicipio').innerHTML = '<option value="">Erro ao carregar municípios</option>';
+    }
+}
+
+// 3. Audita a aba DADOS do município selecionado e gera o QR Code
+async function auditarMunicipio(idPlanilhaDados) {
+    try {
+        const urlGviz = `https://docs.google.com/spreadsheets/d/${idPlanilhaDados}/gviz/tq?tqx=out:json&sheet=DADOS`;
         const resp = await fetch(urlGviz);
         const txt = await resp.text();
         const jsonPuro = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
@@ -176,13 +225,15 @@ async function auditarEGerar() {
         document.getElementById("stat-audios").innerText = totalAudios;
 
     } catch(e) {
-        document.getElementById("stat-status").innerText = "⚠️ Erro";
+        document.getElementById("stat-status").innerText = "⚠️ Erro Dados";
         document.getElementById("stat-status").style.color = "#e74c3c";
+        document.getElementById("stat-pontos").innerText = "0";
+        document.getElementById("stat-audios").innerText = "0";
     }
 
-    // 3. Geração Automática da URL e QR Code Apontando para index-2.html
+    // Geração do Link e QR Code apontando para index-2.html com a ID do Município selecionado
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-    const urlFinal = `${baseUrl}/index-2.html?id=${sheetId}`;
+    const urlFinal = `${baseUrl}/index-2.html?id=${idPlanilhaDados}`;
 
     document.getElementById("final-url").value = urlFinal;
     document.getElementById("qrcode").innerHTML = "";
@@ -198,6 +249,14 @@ async function auditarEGerar() {
     document.getElementById("out-section").style.display = "block";
 }
 
+// Disparado ao alterar a opção no Menu Suspenso
+function alternarMunicipio() {
+    const idSelecionada = document.getElementById('seletorMunicipio').value;
+    if (idSelecionada) {
+        auditarMunicipio(idSelecionada);
+    }
+}
+
 function copiarLink() {
     const el = document.getElementById("final-url");
     el.select();
@@ -209,9 +268,10 @@ function abrirMapa() {
     window.open(document.getElementById("final-url").value, '_blank');
 }
 
-// Inicialização 100% Automática ao carregar
-window.onload = () => {
-    auditarEGerar();
+// Inicialização Geral
+window.onload = async () => {
+    await carregarParametrosGerais();
+    await carregarListaMunicipios();
 };
 </script>
 
