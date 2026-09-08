@@ -10,7 +10,7 @@
 
 <!-- 2. Roteador de Cidades + Injeção Dinâmica do GA4 -->
 <script>
-  // Lê a variável 'cidade' da URL (?cidade=friburgo ou ?cidade=rio)
+  // Lê a variável 'cidade' ou 'id' da URL (?cidade=friburgo ou ?cidade=rio)
   const urlParams = new URLSearchParams(window.location.search);
   const cidadeAtiva = urlParams.get('cidade') ? urlParams.get('cidade').toLowerCase() : 'friburgo';
 
@@ -180,9 +180,7 @@ audio { width: 100%; height: 36px; margin-top: 6px; display: block; }
   color: white;
   margin-bottom: 4px;
 }
-.tag-estrada { background-color: #27ae60; }
-.tag-urbano { background-color: #2b6cb0; }
-.tag-categoria { background-color: #8e44ad; margin-left: 4px; }
+.tag-categoria { background-color: #8e44ad; }
 .popup-img {
   width: 100%;
   max-height: 140px;
@@ -239,9 +237,7 @@ let configCliente = {
     tipoMapa: "OSM",
     titulo: `Plataforma hip.hop - ${CONFIG_CIDADE.cityName}`,
     subtitulo: `Mapa Turístico de ${CONFIG_CIDADE.cityName}`,
-    logoUrl: CONFIG_CIDADE.logo || `${BASE_ASSETS}logos/logo-hiphop.png`,
-    balaoE: `${BASE_ASSETS}baloes/balao-turismo.png`,
-    balaoU: `${BASE_ASSETS}baloes/balao-turismo.png`
+    logoUrl: CONFIG_CIDADE.logo || `${BASE_ASSETS}logos/HIPHOP-Logo.png`
 };
 
 let marcadorUsuario = null;
@@ -263,6 +259,14 @@ function normalizarTexto(txt) {
 function processarUrlMidia(caminhoInput, subpastaPadrao, fallbackNome) {
     if (!caminhoInput) return `${BASE_ASSETS}${subpastaPadrao}/${fallbackNome}`;
     let url = String(caminhoInput).trim();
+    
+    // Tratamento universal para URLs do GitHub
+    if (url.includes('github.com')) {
+        url = url.replace('github.com', 'raw.githubusercontent.com')
+                 .replace('/blob/', '/')
+                 .replace('?raw=true', '');
+    }
+    
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     return `${BASE_ASSETS}${subpastaPadrao}/${url.split('/').pop()}`;
 }
@@ -355,11 +359,7 @@ async function carregarParametrosEAtivarDados() {
             } else if (chave.includes("titulo")) {
                 configCliente.titulo = valor;
             } else if (chave.includes("logo")) {
-                configCliente.logoUrl = processarUrlMidia(valor, "logos", "logo-friburgo.png");
-            } else if (chave.includes("balao_e")) {
-                configCliente.balaoE = processarUrlMidia(valor, "baloes", "balao-turismo.png");
-            } else if (chave.includes("balao_u")) {
-                configCliente.balaoU = processarUrlMidia(valor, "baloes", "balao-turismo.png");
+                configCliente.logoUrl = processarUrlMidia(valor, "logos", "HIPHOP-Logo.png");
             } else if (chave.includes("idiomas")) {
                 idiomasHabilitados = valor.toUpperCase().split(',').map(s => s.trim()).filter(Boolean);
             }
@@ -417,7 +417,9 @@ async function carregarDadosPontos() {
             let lngRaw = val(2).replace(',', '.');
             let latNum = parseFloat(latRaw);
             let lngNum = parseFloat(lngRaw);
-            let tipoBalao = (val(3).toUpperCase() === "E") ? "E" : "U";
+
+            // 📍 LEITURA DIRETA DO LINK DO BALÃO DA COLUNA D (ÍNDICE 3) DA ABA DADOS
+            let urlBalaoDireta = processarUrlMidia(val(3), "baloes", "Balao_E.png");
 
             if (!isNaN(latNum) && !isNaN(lngNum)) {
                 let cat = val(7) || "Geral";
@@ -444,8 +446,8 @@ async function carregarDadosPontos() {
                     nome: nomePatrimonio,
                     lat: latNum,
                     lng: lngNum,
-                    balao: tipoBalao,
-                    raio: parseInt(val(6)) || (tipoBalao === "E" ? 150 : 25),
+                    linkBalao: urlBalaoDireta, // Link exclusivo do balão deste ponto
+                    raio: parseInt(val(6)) || 30,
                     categoria: cat,
                     foto: formatarLinkImagemDrive(val(8)),
                     resumo: mapaResumos,
@@ -475,13 +477,12 @@ function plotarPinsNoMapa() {
     pontosHistoricos.forEach(ponto => {
         if (categoriaAtiva !== "TODAS" && ponto.categoria !== categoriaAtiva) return;
 
-        const iconeUrl = (ponto.balao === 'E') ? configCliente.balaoE : configCliente.balaoU;
-
+        // 🎨 ÍCONE GERADO A PARTIR DO LINK DO BALÃO ESPECÍFICO DO PONTO
         const customIcon = L.icon({
-            iconUrl: iconeUrl,
-            iconSize: [34, 42],
-            iconAnchor: [17, 42],
-            popupAnchor: [0, -38]
+            iconUrl: ponto.linkBalao,
+            iconSize: [36, 46],
+            iconAnchor: [18, 46],
+            popupAnchor: [0, -40]
         });
 
         bounds.push([ponto.lat, ponto.lng]);
@@ -492,11 +493,7 @@ function plotarPinsNoMapa() {
         const urlAudio = ponto.audioArquivo[idiomaAtual] || ponto.audioArquivo[ponto.langBase] || '';
         const idAudio = `audio-ponto-${ponto.id}`;
 
-        let tagClasse = ponto.balao === 'E' ? 'tag-estrada' : 'tag-urbano';
-        let tagTexto = ponto.balao === 'E' ? 'Estrada' : 'Urbano';
-
         let htmlModal = `<div style="font-family:sans-serif;">` +
-        `<span class="badge-tag ${tagClasse}">${tagTexto} (${ponto.raio}m)</span>` +
         (ponto.categoria ? `<span class="badge-tag tag-categoria">${ponto.categoria}</span>` : '') +
         `<h3 style="margin:4px 0; font-size:14px; color:#1a365d;">${ponto.nome}</h3>` +
         (ponto.foto ? `<img src="${ponto.foto}" class="popup-img" alt="${ponto.nome}">` : '') +
