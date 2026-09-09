@@ -147,7 +147,7 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega lista e valida código (com tratamento de hash e case-insensitive)
+// 2. Carrega lista e valida código
 async function carregarListaMunicipios() {
     try {
         const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
@@ -159,13 +159,16 @@ async function carregarListaMunicipios() {
         const select = document.getElementById('seletorMunicipio');
         select.innerHTML = '';
 
-        // Leitura e reconstrução do parâmetro caso o '#' tenha cortado a URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let codDaUrl = urlParams.get('cidade') ? decodeURIComponent(urlParams.get('cidade')).trim().toLowerCase() : '';
-        if (window.location.hash) {
-            codDaUrl += window.location.hash.toLowerCase().trim();
+        // Captura o parâmetro ?cidade= da URL
+        const hrefTotal = window.location.href;
+        let codDaUrl = '';
+        
+        if (hrefTotal.includes('cidade=')) {
+            codDaUrl = hrefTotal.split('cidade=')[1].split('&')[0];
+            codDaUrl = decodeURIComponent(codDaUrl).trim().toLowerCase();
         }
 
+        const urlParams = new URLSearchParams(window.location.search);
         const idDaUrl = urlParams.get('id') ? urlParams.get('id').trim() : null;
         let municipioEncontrado = false;
 
@@ -178,6 +181,7 @@ async function carregarListaMunicipios() {
 
                 const nomeLower = nomeMunicipio.toLowerCase();
                 
+                // Valida linhas válidas ignorando o cabeçalho
                 if(!nomeLower.includes('municipio') && !nomeLower.includes('município') && idPlanilha) {
                     const opt = document.createElement('option');
                     opt.value = idPlanilha;
@@ -188,7 +192,8 @@ async function carregarListaMunicipios() {
 
                     const codBancoClean = codigoMunicipio.toLowerCase().trim();
 
-                    if (codDaUrl && codBancoClean === codDaUrl) {
+                    // Comparação direta ou parcial para suportar cerquilhas e códigos limpos
+                    if (codDaUrl && (codBancoClean === codDaUrl || codBancoClean.replace('#','') === codDaUrl.replace('#',''))) {
                         opt.selected = true;
                         municipioEncontrado = true;
                     } else if (idDaUrl && idDaUrl === idPlanilha) {
