@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Console de Gestão - Plataforma hip.hop</title>
+<title>Console Master de Gestão - Plataforma hip.hop</title>
 
 <!-- QRCode.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -19,7 +19,7 @@ header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 
 .brand-header img { height: 45px; width: auto; border-radius: 4px; }
 .brand-titles h1 { margin: 0; color: #1a365d; font-size: 18px; }
 .brand-titles h2 { margin: 2px 0 0 0; color: #718096; font-size: 13px; font-weight: normal; }
-.badge-v3 { background: #e67e22; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+.badge-v3 { background: #1a365d; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
 
 .section-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
 label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 12px; color: #4a5568; }
@@ -53,15 +53,15 @@ button:hover { background: #2b6cb0; }
       <img id="logoConsole" alt="Logo" style="display: none;">
       <div class="brand-titles">
         <h1 id="tituloConsole">Carregando título...</h1>
-        <h2 id="subtituloConsole">Console de Gestão - Municípios implantados</h2>
+        <h2 id="subtituloConsole">Console Master - Gestão Central DYART</h2>
       </div>
     </div>
-    <span class="badge-v3">v3.0 - GA4 Telemetry</span>
+    <span class="badge-v3">Master Console v3.0</span>
   </header>
 
-  <!-- SELETOR DE MUNICÍPIOS -->
+  <!-- SELETOR DE MUNICÍPIOS (VISÍVEL NO MASTER) -->
   <div class="section-box">
-    <label for="seletorMunicipio">🏙️ Selecione o Município Implantado:</label>
+    <label for="seletorMunicipio">🏙️ Selecione o Município para Gestão:</label>
     <select id="seletorMunicipio" onchange="alternarMunicipio()">
       <option value="">Carregando lista de municípios...</option>
     </select>
@@ -147,7 +147,7 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega a lista de municípios da aba MUNICIPIOS (Lendo Colunas A, B e C, ignorando o cabeçalho)
+// 2. Carrega a lista de municípios (Lendo MUNICÍPIO, CÓDIGO, ID PLANILHA, LOOKER URL)
 async function carregarListaMunicipios() {
     try {
         const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
@@ -159,26 +159,39 @@ async function carregarListaMunicipios() {
         const select = document.getElementById('seletorMunicipio');
         select.innerHTML = '';
 
-        let idDaUrl = new URLSearchParams(window.location.search).get('id');
+        const urlParams = new URLSearchParams(window.location.search);
+        let codDaUrl = urlParams.get('cidade') ? decodeURIComponent(urlParams.get('cidade')).trim().toLowerCase() : '';
+        if (window.location.hash) {
+            codDaUrl += window.location.hash.toLowerCase().trim();
+        }
+        const idDaUrl = urlParams.get('id') ? urlParams.get('id').trim() : null;
 
         rows.forEach((r) => {
-            if(r && r.c && r.c[0] && r.c[0].v && r.c[1] && r.c[1].v) {
+            if(r && r.c && r.c[0] && r.c[0].v) {
                 const nomeMunicipio = String(r.c[0].v).trim();
-                const idPlanilha = String(r.c[1].v).trim();
-                const urlLooker = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
+                const codigoMunicipio = (r.c[1] && r.c[1].v) ? String(r.c[1].v).trim() : '';
+                const idPlanilha = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
+                const urlLooker = (r.c[3] && r.c[3].v) ? String(r.c[3].v).trim() : '';
 
-                // Ignora a linha de cabeçalho (ex: "MUNICÍPIO", "MUNICIPIO", "ID PLANILHA...")
                 const nomeLower = nomeMunicipio.toLowerCase();
-                if(!nomeLower.includes('municipio') && !nomeLower.includes('município')) {
+                
+                // Ignora o cabeçalho
+                if(!nomeLower.includes('municipio') && !nomeLower.includes('município') && idPlanilha) {
                     const opt = document.createElement('option');
                     opt.value = idPlanilha;
-                    opt.innerText = nomeMunicipio;
+                    opt.innerText = `${nomeMunicipio} [${codigoMunicipio || 'S/COD'}]`;
                     
                     if (urlLooker) opt.setAttribute('data-looker', urlLooker);
+                    if (codigoMunicipio) opt.setAttribute('data-codigo', codigoMunicipio);
 
-                    if (idDaUrl && idDaUrl === idPlanilha) {
+                    const codBancoClean = codigoMunicipio.toLowerCase().trim();
+
+                    if (codDaUrl && codBancoClean === codDaUrl) {
+                        opt.selected = true;
+                    } else if (idDaUrl && idDaUrl === idPlanilha) {
                         opt.selected = true;
                     }
+
                     select.appendChild(opt);
                 }
             }
@@ -203,7 +216,6 @@ function alternarMunicipio() {
     const optionSelecionada = select.options[select.selectedIndex];
     
     if (idSelecionada) {
-        // Atualiza a URL do Iframe do Looker Studio com base na Coluna C
         const urlLookerEspecifica = optionSelecionada ? optionSelecionada.getAttribute('data-looker') : '';
         if (urlLookerEspecifica) {
             document.getElementById('lookerIframe').src = urlLookerEspecifica;
@@ -248,7 +260,6 @@ async function auditarMunicipio(idPlanilhaDados) {
         document.getElementById("stat-audios").innerText = "0";
     }
 
-    // Geração do Link e QR Code apontando para index-2.html com a ID do Município selecionado
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
     const urlFinal = `${baseUrl}/index-2.html?id=${idPlanilhaDados}`;
 
@@ -282,6 +293,21 @@ window.onload = async () => {
     await carregarParametrosGerais();
     await carregarListaMunicipios();
 };
+</script>
+
+<!-- Trava de Inspeção -->
+<script>
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', event => {
+    if (
+      event.key === 'F12' ||
+      (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i' || event.key === 'J' || event.key === 'j' || event.key === 'C' || event.key === 'c')) ||
+      (event.ctrlKey && (event.key === 'U' || event.key === 'u' || event.key === 'S' || event.key === 's'))
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  });
 </script>
 
 </body>
