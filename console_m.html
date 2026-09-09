@@ -148,7 +148,7 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega a lista de municípios (MUNICÍPIO, CÓDIGO, ID PLANILHA, LOOKER URL)
+// 2. Carrega a lista de municípios e valida o CÓDIGO da URL com precisão
 async function carregarListaMunicipios() {
     try {
         const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
@@ -165,6 +165,8 @@ async function carregarListaMunicipios() {
         const codDaUrl = urlParams.get('cidade') ? decodeURIComponent(urlParams.get('cidade')).trim().toLowerCase() : null;
         const idDaUrl = urlParams.get('id') ? urlParams.get('id').trim() : null;
 
+        let municipioEncontrado = false;
+
         rows.forEach((r) => {
             if(r && r.c && r.c[0] && r.c[0].v) {
                 const nomeMunicipio = String(r.c[0].v).trim();
@@ -172,8 +174,9 @@ async function carregarListaMunicipios() {
                 const idPlanilha = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
                 const urlLooker = (r.c[3] && r.c[3].v) ? String(r.c[3].v).trim() : '';
 
-                // Ignora o cabeçalho
                 const nomeLower = nomeMunicipio.toLowerCase();
+                
+                // Ignora o cabeçalho
                 if(!nomeLower.includes('municipio') && !nomeLower.includes('município') && idPlanilha) {
                     const opt = document.createElement('option');
                     opt.value = idPlanilha;
@@ -182,22 +185,27 @@ async function carregarListaMunicipios() {
                     if (urlLooker) opt.setAttribute('data-looker', urlLooker);
                     if (codigoMunicipio) opt.setAttribute('data-codigo', codigoMunicipio);
 
-                    // Seleção automática via ?cidade=CODIGO ou ?id=ID
+                    // Validação estrita do Código da URL x Código da Coluna B
                     if (codDaUrl && codigoMunicipio.toLowerCase() === codDaUrl) {
                         opt.selected = true;
+                        municipioEncontrado = true;
                     } else if (idDaUrl && idDaUrl === idPlanilha) {
                         opt.selected = true;
+                        municipioEncontrado = true;
                     }
+
                     select.appendChild(opt);
                 }
             }
         });
 
-        if (select.value) {
+        // Se encontrou a cidade correspondente ao código da URL, ativa ela
+        if (municipioEncontrado && select.value) {
             alternarMunicipio();
         } else {
-            document.getElementById('nomeMunicipioExibido').innerText = 'Código do município inválido ou não informado na URL.';
+            document.getElementById('nomeMunicipioExibido').innerText = '⚠️ Código de município não encontrado ou inválido na URL.';
             document.getElementById('nomeMunicipioExibido').style.color = '#e74c3c';
+            document.getElementById('lookerIframe').src = '';
         }
 
     } catch(e) {
