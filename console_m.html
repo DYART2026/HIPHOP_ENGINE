@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Console de Gestão - Plataforma hip.hop</title>
+<title>Console de Gestão Municipal - Plataforma hip.hop</title>
 
 <!-- QRCode.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -23,7 +23,7 @@ header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 
 
 .section-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
 label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 12px; color: #4a5568; }
-select, input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; margin-bottom: 10px; background: white; }
+input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; margin-bottom: 10px; background: white; }
 button { background: #1a365d; color: white; border: none; padding: 12px 18px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; font-size: 13px; }
 button:hover { background: #2b6cb0; }
 
@@ -53,18 +53,19 @@ button:hover { background: #2b6cb0; }
       <img id="logoConsole" alt="Logo" style="display: none;">
       <div class="brand-titles">
         <h1 id="tituloConsole">Carregando título...</h1>
-        <h2 id="subtituloConsole">Console de Gestão - Municípios implantados</h2>
+        <h2 id="subtituloConsole">Console de Gestão - Painel Municipal</h2>
       </div>
     </div>
     <span class="badge-v3">v3.0 - GA4 Telemetry</span>
   </header>
 
-  <!-- SELETOR DE MUNICÍPIOS -->
+  <!-- IDENTIFICAÇÃO DO MUNICÍPIO EXIBIDO (SEM SELETOR VISÍVEL) -->
   <div class="section-box">
-    <label for="seletorMunicipio">🏙️ Selecione o Município Implantado:</label>
-    <select id="seletorMunicipio" onchange="alternarMunicipio()">
-      <option value="">Carregando lista de municípios...</option>
-    </select>
+    <label>🏙️ Município em Exibição:</label>
+    <h2 id="nomeMunicipioExibido" style="margin: 4px 0 0 0; color: #1a365d; font-size: 18px;">Carregando município...</h2>
+    
+    <!-- Elemento select mantido oculto para processamento interno do código -->
+    <select id="seletorMunicipio" onchange="alternarMunicipio()" style="display: none;"></select>
   </div>
 
   <!-- MÓDULO 1: AUDITORIA AUTOMÁTICA DA PLANILHA DO MUNICÍPIO -->
@@ -195,24 +196,30 @@ async function carregarListaMunicipios() {
         if (select.value) {
             alternarMunicipio();
         } else {
-            select.innerHTML = '<option value="">Nenhum município cadastrado</option>';
+            document.getElementById('nomeMunicipioExibido').innerText = 'Código do município inválido ou não informado na URL.';
+            document.getElementById('nomeMunicipioExibido').style.color = '#e74c3c';
         }
 
     } catch(e) {
         console.log("Erro ao carregar aba MUNICIPIOS.");
-        document.getElementById('seletorMunicipio').innerHTML = '<option value="">Erro ao carregar municípios</option>';
+        document.getElementById('nomeMunicipioExibido').innerText = 'Erro ao carregar dados do município.';
+        document.getElementById('nomeMunicipioExibido').style.color = '#e74c3c';
     }
 }
 
-// 3. Executado ao trocar o município no Menu Suspenso
+// 3. Executado dinamicamente para carregar o município selecionado pela URL
 function alternarMunicipio() {
     const select = document.getElementById('seletorMunicipio');
     const idSelecionada = select.value;
     const optionSelecionada = select.options[select.selectedIndex];
     
-    if (idSelecionada) {
+    if (idSelecionada && optionSelecionada) {
+        // Atualiza o título na tela com o nome do município atrelado ao código da URL
+        document.getElementById('nomeMunicipioExibido').innerText = optionSelecionada.text;
+        document.getElementById('nomeMunicipioExibido').style.color = '#1a365d';
+
         // Atualiza a URL do Iframe do Looker Studio
-        const urlLookerEspecifica = optionSelecionada ? optionSelecionada.getAttribute('data-looker') : '';
+        const urlLookerEspecifica = optionSelecionada.getAttribute('data-looker');
         if (urlLookerEspecifica) {
             document.getElementById('lookerIframe').src = urlLookerEspecifica;
         }
