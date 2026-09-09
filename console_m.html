@@ -59,16 +59,15 @@ button:hover { background: #2b6cb0; }
     <span class="badge-v3">v3.0 - GA4 Telemetry</span>
   </header>
 
-  <!-- IDENTIFICAÇÃO DO MUNICÍPIO EXIBIDO (SEM SELETOR VISÍVEL) -->
+  <!-- IDENTIFICAÇÃO DO MUNICÍPIO EXIBIDO -->
   <div class="section-box">
     <label>🏙️ Município em Exibição:</label>
     <h2 id="nomeMunicipioExibido" style="margin: 4px 0 0 0; color: #1a365d; font-size: 18px;">Carregando município...</h2>
     
-    <!-- Elemento select mantido oculto para processamento interno do código -->
     <select id="seletorMunicipio" onchange="alternarMunicipio()" style="display: none;"></select>
   </div>
 
-  <!-- MÓDULO 1: AUDITORIA AUTOMÁTICA DA PLANILHA DO MUNICÍPIO -->
+  <!-- MÓDULO 1: AUDITORIA AUTOMÁTICA -->
   <div class="section-box">
     <div id="audit-results">
       <label>Status e Diagnóstico do Município Selecionado:</label>
@@ -81,7 +80,7 @@ button:hover { background: #2b6cb0; }
     </div>
   </div>
 
-  <!-- MÓDULO 2: LINK PÚBLICO E QR CODE DO ROTEIRO -->
+  <!-- MÓDULO 2: LINK PÚBLICO E QR CODE -->
   <div id="out-section" class="section-box out-box" style="display:none;">
     <label>Link Público do Mapa (Turistas/Totens):</label>
     <input type="text" id="final-url" readonly>
@@ -94,7 +93,7 @@ button:hover { background: #2b6cb0; }
     </div>
   </div>
 
-  <!-- MÓDULO 3: TELEMETRIA URBANA GA4 / LOOKER STUDIO -->
+  <!-- MÓDULO 3: TELEMETRIA LOOKER STUDIO -->
   <div class="section-box">
     <label>📊 Telemetria das Ruas (Acessos e Engajamento em Tempo Real - GA4):</label>
     <p style="font-size:11px; color:#718096; margin-top:0; margin-bottom:12px;">Métricas consolidadas de acessos aos balões, idiomas selecionados e acionamentos de áudio.</p>
@@ -113,7 +112,7 @@ button:hover { background: #2b6cb0; }
 <script>
 const ID_PLANILHA_PARAMETROS = '1034bcy9azlYnWKnTV-TdtbRg3eG-EJVt28dvaqwJGMY';
 
-// 1. Carrega Título, Subtítulo e Logo da aba PARAMETROS
+// 1. Carrega Parâmetros Gerais
 async function carregarParametrosGerais() {
     try {
         const urlGvizParam = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=PARAMETROS`;
@@ -148,7 +147,7 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega a lista de municípios e valida o CÓDIGO da URL com precisão
+// 2. Carrega lista e valida código (com tratamento de hash e case-insensitive)
 async function carregarListaMunicipios() {
     try {
         const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
@@ -160,11 +159,14 @@ async function carregarListaMunicipios() {
         const select = document.getElementById('seletorMunicipio');
         select.innerHTML = '';
 
-        // Captura o parâmetro ?cidade=CODIGO ou ?id=ID da URL
+        // Leitura e reconstrução do parâmetro caso o '#' tenha cortado a URL
         const urlParams = new URLSearchParams(window.location.search);
-        const codDaUrl = urlParams.get('cidade') ? decodeURIComponent(urlParams.get('cidade')).trim().toLowerCase() : null;
-        const idDaUrl = urlParams.get('id') ? urlParams.get('id').trim() : null;
+        let codDaUrl = urlParams.get('cidade') ? decodeURIComponent(urlParams.get('cidade')).trim().toLowerCase() : '';
+        if (window.location.hash) {
+            codDaUrl += window.location.hash.toLowerCase().trim();
+        }
 
+        const idDaUrl = urlParams.get('id') ? urlParams.get('id').trim() : null;
         let municipioEncontrado = false;
 
         rows.forEach((r) => {
@@ -176,7 +178,6 @@ async function carregarListaMunicipios() {
 
                 const nomeLower = nomeMunicipio.toLowerCase();
                 
-                // Ignora o cabeçalho
                 if(!nomeLower.includes('municipio') && !nomeLower.includes('município') && idPlanilha) {
                     const opt = document.createElement('option');
                     opt.value = idPlanilha;
@@ -185,8 +186,9 @@ async function carregarListaMunicipios() {
                     if (urlLooker) opt.setAttribute('data-looker', urlLooker);
                     if (codigoMunicipio) opt.setAttribute('data-codigo', codigoMunicipio);
 
-                    // Validação estrita do Código da URL x Código da Coluna B
-                    if (codDaUrl && codigoMunicipio.toLowerCase() === codDaUrl) {
+                    const codBancoClean = codigoMunicipio.toLowerCase().trim();
+
+                    if (codDaUrl && codBancoClean === codDaUrl) {
                         opt.selected = true;
                         municipioEncontrado = true;
                     } else if (idDaUrl && idDaUrl === idPlanilha) {
@@ -199,7 +201,6 @@ async function carregarListaMunicipios() {
             }
         });
 
-        // Se encontrou a cidade correspondente ao código da URL, ativa ela
         if (municipioEncontrado && select.value) {
             alternarMunicipio();
         } else {
@@ -215,18 +216,16 @@ async function carregarListaMunicipios() {
     }
 }
 
-// 3. Executado dinamicamente para carregar o município selecionado pela URL
+// 3. Seleção dinâmica do município
 function alternarMunicipio() {
     const select = document.getElementById('seletorMunicipio');
     const idSelecionada = select.value;
     const optionSelecionada = select.options[select.selectedIndex];
     
     if (idSelecionada && optionSelecionada) {
-        // Atualiza o título na tela com o nome do município atrelado ao código da URL
         document.getElementById('nomeMunicipioExibido').innerText = optionSelecionada.text;
         document.getElementById('nomeMunicipioExibido').style.color = '#1a365d';
 
-        // Atualiza a URL do Iframe do Looker Studio
         const urlLookerEspecifica = optionSelecionada.getAttribute('data-looker');
         if (urlLookerEspecifica) {
             document.getElementById('lookerIframe').src = urlLookerEspecifica;
@@ -236,7 +235,7 @@ function alternarMunicipio() {
     }
 }
 
-// 4. Audita a aba DADOS do município selecionado e gera o QR Code
+// 4. Auditoria da Planilha e QR Code
 async function auditarMunicipio(idPlanilhaDados) {
     try {
         const urlGviz = `https://docs.google.com/spreadsheets/d/${idPlanilhaDados}/gviz/tq?tqx=out:json&sheet=DADOS`;
@@ -271,7 +270,6 @@ async function auditarMunicipio(idPlanilhaDados) {
         document.getElementById("stat-audios").innerText = "0";
     }
 
-    // Geração do Link e QR Code apontando para index-2.html com a ID do Município selecionado
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
     const urlFinal = `${baseUrl}/index-2.html?id=${idPlanilhaDados}`;
 
@@ -300,14 +298,13 @@ function abrirMapa() {
     window.open(document.getElementById("final-url").value, '_blank');
 }
 
-// Inicialização Geral
 window.onload = async () => {
     await carregarParametrosGerais();
     await carregarListaMunicipios();
 };
 </script>
 
-<!-- Trava de Inspeção e Menu de Contexto (F12 / Botão Direito) -->
+<!-- Trava de Inspeção -->
 <script>
   document.addEventListener('contextmenu', event => event.preventDefault());
   document.addEventListener('keydown', event => {
