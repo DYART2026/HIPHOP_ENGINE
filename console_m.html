@@ -147,7 +147,7 @@ async function carregarParametrosGerais() {
     }
 }
 
-// 2. Carrega a lista de municípios da aba MUNICIPIOS (Lendo Colunas A, B e C, ignorando o cabeçalho)
+// 2. Carrega a lista de municípios (MUNICÍPIO, CÓDIGO, ID PLANILHA, LOOKER URL)
 async function carregarListaMunicipios() {
     try {
         const urlGvizMun = `https://docs.google.com/spreadsheets/d/${ID_PLANILHA_PARAMETROS}/gviz/tq?tqx=out:json&sheet=MUNICIPIOS`;
@@ -159,24 +159,32 @@ async function carregarListaMunicipios() {
         const select = document.getElementById('seletorMunicipio');
         select.innerHTML = '';
 
-        let idDaUrl = new URLSearchParams(window.location.search).get('id');
+        // Captura o parâmetro ?cidade=CODIGO ou ?id=ID da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const codDaUrl = urlParams.get('cidade') ? decodeURIComponent(urlParams.get('cidade')).trim().toLowerCase() : null;
+        const idDaUrl = urlParams.get('id') ? urlParams.get('id').trim() : null;
 
         rows.forEach((r) => {
-            if(r && r.c && r.c[0] && r.c[0].v && r.c[1] && r.c[1].v) {
+            if(r && r.c && r.c[0] && r.c[0].v) {
                 const nomeMunicipio = String(r.c[0].v).trim();
-                const idPlanilha = String(r.c[1].v).trim();
-                const urlLooker = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
+                const codigoMunicipio = (r.c[1] && r.c[1].v) ? String(r.c[1].v).trim() : '';
+                const idPlanilha = (r.c[2] && r.c[2].v) ? String(r.c[2].v).trim() : '';
+                const urlLooker = (r.c[3] && r.c[3].v) ? String(r.c[3].v).trim() : '';
 
-                // Ignora a linha de cabeçalho (ex: "MUNICÍPIO", "MUNICIPIO", "ID PLANILHA...")
+                // Ignora o cabeçalho
                 const nomeLower = nomeMunicipio.toLowerCase();
-                if(!nomeLower.includes('municipio') && !nomeLower.includes('município')) {
+                if(!nomeLower.includes('municipio') && !nomeLower.includes('município') && idPlanilha) {
                     const opt = document.createElement('option');
                     opt.value = idPlanilha;
                     opt.innerText = nomeMunicipio;
                     
                     if (urlLooker) opt.setAttribute('data-looker', urlLooker);
+                    if (codigoMunicipio) opt.setAttribute('data-codigo', codigoMunicipio);
 
-                    if (idDaUrl && idDaUrl === idPlanilha) {
+                    // Seleção automática via ?cidade=CODIGO ou ?id=ID
+                    if (codDaUrl && codigoMunicipio.toLowerCase() === codDaUrl) {
+                        opt.selected = true;
+                    } else if (idDaUrl && idDaUrl === idPlanilha) {
                         opt.selected = true;
                     }
                     select.appendChild(opt);
@@ -203,7 +211,7 @@ function alternarMunicipio() {
     const optionSelecionada = select.options[select.selectedIndex];
     
     if (idSelecionada) {
-        // Atualiza a URL do Iframe do Looker Studio com base na Coluna C
+        // Atualiza a URL do Iframe do Looker Studio
         const urlLookerEspecifica = optionSelecionada ? optionSelecionada.getAttribute('data-looker') : '';
         if (urlLookerEspecifica) {
             document.getElementById('lookerIframe').src = urlLookerEspecifica;
@@ -282,6 +290,21 @@ window.onload = async () => {
     await carregarParametrosGerais();
     await carregarListaMunicipios();
 };
+</script>
+
+<!-- Trava de Inspeção e Menu de Contexto (F12 / Botão Direito) -->
+<script>
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', event => {
+    if (
+      event.key === 'F12' ||
+      (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i' || event.key === 'J' || event.key === 'j' || event.key === 'C' || event.key === 'c')) ||
+      (event.ctrlKey && (event.key === 'U' || event.key === 'u' || event.key === 'S' || event.key === 's'))
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  });
 </script>
 
 </body>
