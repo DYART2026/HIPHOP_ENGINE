@@ -1,242 +1,298 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DYART - Gerador de Áudios (hip.hop)</title>
-  <style>
-    body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background-color: #f4f6f9; 
-      margin: 0; 
-      padding: 20px; 
-      color: #333; 
-    }
-    .card { 
-      background: #fff; 
-      padding: 24px; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
-      max-width: 800px; 
-      margin: 0 auto 20px auto; 
-    }
-    h1 { 
-      margin-top: 0; 
-      color: #1a73e8; 
-      font-size: 22px; 
-    }
-    p {
-      color: #555;
-      font-size: 14px;
-    }
-    label { 
-      font-weight: bold; 
-      display: block; 
-      margin-top: 14px; 
-      margin-bottom: 4px; 
-    }
-    input[type="text"], input[type="password"] { 
-      width: 100%; 
-      padding: 10px; 
-      border: 1px solid #ccc; 
-      border-radius: 4px; 
-      box-sizing: border-box; 
-    }
-    .btn { 
-      background: #1a73e8; 
-      color: #fff; 
-      border: none; 
-      padding: 12px 20px; 
-      border-radius: 4px; 
-      cursor: pointer; 
-      font-size: 15px; 
-      font-weight: bold; 
-      margin-top: 20px; 
-    }
-    .btn:hover { 
-      background: #1557b0; 
-    }
-    .btn:disabled { 
-      background: #ccc; 
-      cursor: not-allowed; 
-    }
-    #log { 
-      background: #1e1e1e; 
-      color: #00ff66; 
-      padding: 15px; 
-      border-radius: 6px; 
-      font-family: monospace; 
-      height: 300px; 
-      overflow-y: auto; 
-      white-space: pre-wrap; 
-      font-size: 13px; 
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motor de Áudio - Project hip.hop (DYART)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a365d;
+            margin-top: 0;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #4a5568;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            background-color: #2b6cb0;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2c5282;
+        }
+        button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        #logConsole {
+            background-color: #1a202c;
+            color: #68d391;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 6px;
+            height: 350px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .log-error { color: #fc8181; }
+        .log-info { color: #63b3ed; }
+        .log-success { color: #68d391; }
+        .log-warn { color: #f6ad55; }
+    </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1>DYART Business Intelligence — Motor de Áudios (hip.hop)</h1>
-    <p>Geração automatizada de narrações multilíngues via ElevenLabs para a pasta <code>IMPL_output_audios</code>.</p>
+<div class="container">
+    <h1>🎙️ Gerador de Áudios - hip.hop</h1>
+    <p style="color: #718096; font-size: 14px;">Automação de síntese vocal via ElevenLabs + Google Sheets (ABA2)</p>
+
+    <div class="form-group">
+        <label for="apiKey">Chave de API (ElevenLabs):</label>
+        <input type="password" id="apiKey" placeholder="Cole sua API Key da ElevenLabs aqui (xi-api-key)">
+    </div>
+
+    <button id="btnIniciar" onclick="iniciarProcessamento()">Iniciar Geração de Áudios</button>
+
+    <h3>Log de Processamento:</h3>
+    <div id="logConsole">Aguardando comando de início...</div>
+</div>
+
+<script>
+// --- CONFIGURAÇÕES DE RECURSOS DA PLANILHA ---
+const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
+const SHEET_NAME = 'ABA2';
+
+// --- VOZES PADRÃO (Fallback caso não haja ID específica na linha) ---
+const DEFAULT_VOICE_PT = '21m00Tcm4TlvDq8ikWAM'; // Rachel / Padrão
+const DEFAULT_VOICE_EN = '21m00Tcm4TlvDq8ikWAM'; 
+const DEFAULT_VOICE_ES = '21m00Tcm4TlvDq8ikWAM'; 
+
+// Modelo de síntese multilíngue v2 da ElevenLabs
+const MODEL_ID = 'eleven_multilingual_v2';
+
+// --- FUNÇÃO DE LOG ---
+function log(mensagem, tipo = 'normal') {
+    const consoleElem = document.getElementById('logConsole');
+    const timestamp = new Date().toLocaleTimeString();
+    let classe = '';
     
-    <label for="apiKey">Chave da API ElevenLabs:</label>
-    <input type="password" id="apiKey" placeholder="Cole sua nova chave xi-api-key aqui (sk_...)">
+    if (tipo === 'erro') classe = 'log-error';
+    if (tipo === 'info') classe = 'log-info';
+    if (tipo === 'sucesso') classe = 'log-success';
+    if (tipo === 'alerta') classe = 'log-warn';
 
-    <label for="voiceId">Voice ID Padrão (Fallback - Roberta PT-BR):</label>
-    <input type="text" id="voiceId" value="RGymW84CSmfVugnA5tvA" placeholder="ID da Voz">
+    consoleElem.innerHTML += `<span class="${classe}">[${timestamp}] ${mensagem}</span>\n`;
+    consoleElem.scrollTop = consoleElem.scrollHeight;
+}
 
-    <button class="btn" id="btnIniciar" onclick="processarPlanilha()">Iniciar Geração de Áudios</button>
-  </div>
+// --- EXTRAÇÃO SEGURA DE TEXTO DAS CÉLULAS GVIZ ---
+function extrairTexto(celula) {
+    if (!celula) return '';
+    let val = celula.f !== undefined && celula.f !== null ? celula.f : celula.v;
+    if (val === null || val === undefined) return '';
+    return String(val).trim();
+}
 
-  <div class="card">
-    <h3>Log de Processamento e Controle de Qualidade</h3>
-    <div id="log">Aguardando comando de início...</div>
-  </div>
+// --- LEITURA DA PLANILHA VIA GOOGLE VIZ API ---
+async function carregarDadosABA2() {
+    log('Lendo dados da ABA2 no Google Sheets...', 'info');
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
 
-  <script>
-    // ============================================================
-    // CONFIGURAÇÕES GERAIS DYART (PLUG & PLAY)
-    // ============================================================
-    const CONFIG_API_KEY_DEFAULT = "sk_29ed24bb2146ebd2d02ea331b52e1949b962aa022db108c1"; // Cole sua nova chave de teste se desejar
-    const CONFIG_VOICE_ID_DEFAULT = "RGymW84CSmfVugnA5tvA"; // Roberta (PT-BR)
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha na conexão HTTP (${response.status})`);
+    
+    const textData = await response.text();
+    // Remove o envelope JSONP do GViz: /*O_o*/ google.visualization.Query.setResponse(...);
+    const jsonString = textData.substring(textData.indexOf('{'), textData.lastIndexOf('}') + 1);
+    const data = JSON.parse(jsonString);
 
-    const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
-    const NOME_DA_ABA = 'ABA2';
+    const rows = data.table.rows;
+    const filaDeAudios = [];
 
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(NOME_DA_ABA)}`;
+    rows.forEach((row) => {
+        // Coluna A: Nome do Patrimônio
+        const patrimonio = extrairTexto(row.c[0]);
 
-    window.onload = () => {
-      if (CONFIG_API_KEY_DEFAULT) {
-        document.getElementById('apiKey').value = CONFIG_API_KEY_DEFAULT;
-      }
-      if (CONFIG_VOICE_ID_DEFAULT) {
-        document.getElementById('voiceId').value = CONFIG_VOICE_ID_DEFAULT;
-      }
+        // Pula linha de cabeçalho ou se o nome do patrimônio estiver vazio
+        if (!patrimonio || patrimonio.toUpperCase().includes("NOME DO PATRIMÔNIO")) {
+            return;
+        }
+
+        // --- PORTUGUÊS (Colunas E, F, O) ---
+        const textoPT = extrairTexto(row.c[4]);
+        let arqPT     = extrairTexto(row.c[5]);
+        const voicePT = extrairTexto(row.c[14]) || DEFAULT_VOICE_PT;
+
+        if (textoPT !== '' && arqPT !== '') {
+            if (!arqPT.toLowerCase().endsWith('.mp3')) arqPT += '.mp3';
+            filaDeAudios.push({ patrimonio, idioma: 'PT', texto: textoPT, arquivo: arqPT, voiceId: voicePT });
+        }
+
+        // --- INGLÊS (Colunas J, K, P) ---
+        const textoEN = extrairTexto(row.c[9]);
+        let arqEN     = extrairTexto(row.c[10]);
+        const voiceEN = extrairTexto(row.c[15]) || DEFAULT_VOICE_EN;
+
+        if (textoEN !== '' && arqEN !== '') {
+            if (!arqEN.toLowerCase().endsWith('.mp3')) arqEN += '.mp3';
+            filaDeAudios.push({ patrimonio, idioma: 'EN', texto: textoEN, arquivo: arqEN, voiceId: voiceEN });
+        }
+
+        // --- ESPANHOL (Colunas L, M, Q) ---
+        const textoES = extrairTexto(row.c[11]);
+        let arqES     = extrairTexto(row.c[12]);
+        const voiceES = extrairTexto(row.c[16]) || DEFAULT_VOICE_ES;
+
+        if (textoES !== '' && arqES !== '') {
+            if (!arqES.toLowerCase().endsWith('.mp3')) arqES += '.mp3';
+            filaDeAudios.push({ patrimonio, idioma: 'ES', texto: textoES, arquivo: arqES, voiceId: voiceES });
+        }
+    });
+
+    return filaDeAudios;
+}
+
+// --- SÍNTESE DE VOZ VIA ELEVENLABS ---
+async function gerarAudioElevenLabs(apiKey, item) {
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${item.voiceId}`;
+
+    const payload = {
+        text: item.texto,
+        model_id: MODEL_ID,
+        voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+        }
     };
 
-    function logMessage(msg) {
-      const logDiv = document.getElementById('log');
-      logDiv.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
-      logDiv.scrollTop = logDiv.scrollHeight;
-    }
-
-    async function processarPlanilha() {
-      const apiKey = document.getElementById('apiKey').value.trim();
-      const voiceIdFallback = document.getElementById('voiceId').value.trim();
-      const btn = document.getElementById('btnIniciar');
-
-      if (!apiKey) {
-        alert('Por favor, informe a Chave da API ElevenLabs!');
-        return;
-      }
-
-      btn.disabled = true;
-      logMessage(`Lendo dados da ${NOME_DA_ABA}...`);
-
-      try {
-        const response = await fetch(SHEET_URL);
-        const text = await response.text();
-        
-        // Converte o payload JSON da API do Google GViz
-        const jsonData = JSON.parse(text.substring(47, text.length - 2));
-        const rows = jsonData.table.rows;
-
-        logMessage(`Encontrados ${rows.length} registros na ${NOME_DA_ABA}.`);
-
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i].c;
-          if (!row) continue;
-
-          const nomePatrimonio = row[0] ? row[0].v : `Ponto ${i+1}`;
-          
-          // Busca Voice ID dinâmico da Coluna N (índice 13) ou usa a voz padrão da tela
-          const voiceIdLinha = (row[13] && row[13].v) ? row[13].v.trim() : voiceIdFallback;
-
-          // Mapeamento dos 3 Idiomas baseado nas colunas da ABA2:
-          // Col C (2) = RESUMO PT | Col D (3) = ÁUDIO_PT
-          // Col H (7) = RESUMO EN | Col I (8) = ÁUDIO_EN
-          // Col J (9) = RESUMO ES | Col K (10) = ÁUDIO_ES
-          const idiomas = [
-            { lang: 'PT', texto: row[2]?.v,  arquivo: row[3]?.v },
-            { lang: 'EN', texto: row[7]?.v,  arquivo: row[8]?.v },
-            { lang: 'ES', texto: row[9]?.v,  arquivo: row[10]?.v }
-          ];
-
-          logMessage(`\n==================================================`);
-          logMessage(`📍 Patrimônio: ${nomePatrimonio}`);
-          logMessage(`==================================================`);
-
-          for (const item of idiomas) {
-            if (!item.texto || !item.arquivo) {
-              logMessage(`⚠️ [${item.lang}] Texto ou Nome do Arquivo não encontrado. Pulando...`);
-              continue;
-            }
-
-            if (!voiceIdLinha) {
-              logMessage(`❌ [${item.lang}] Nenhum Voice ID informado para a síntese.`);
-              continue;
-            }
-
-            // Garante a extensão .mp3 caso a fórmula CONCATENAR entregue apenas o prefixo
-            const nomeFinal = item.arquivo.endsWith('.mp3') ? item.arquivo : `${item.arquivo}.mp3`;
-
-            logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}...`);
-            await gerarAudioElevenLabs(item.texto, nomeFinal, voiceIdLinha, apiKey);
-          }
-        }
-
-        logMessage('\n Processamento multilíngue concluído!');
-        logMessage(`Mova os arquivos baixados para a pasta IMPL_output_audios no Google Drive.`);
-
-      } catch (error) {
-        logMessage(`❌ Erro ao processar a ${NOME_DA_ABA}: ${error.message}`);
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    async function gerarAudioElevenLabs(texto, nomeArquivo, voiceId, apiKey) {
-      const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
-      
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
             'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': apiKey
-          },
-          body: JSON.stringify({
-            text: texto,
-            model_id: "eleven_multilingual_v2",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75
-            }
-          })
-        });
+            'xi-api-key': apiKey,
+            'Content-Type': 'json' ? 'application/json' : 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail?.message || `Erro ElevenLabs HTTP ${response.status}`);
+    }
+
+    return await response.blob();
+}
+
+// --- DISPARO DE DOWNLOAD LOCAL DO ARQUIVO .MP3 ---
+function baixarArquivo(blob, nomeArquivo) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// --- FLUXO PRINCIPAL DE PROCESSAMENTO ---
+async function iniciarProcessamento() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const btn = document.getElementById('btnIniciar');
+
+    if (!apiKey) {
+        alert('Por favor, informe a sua API Key da ElevenLabs.');
+        return;
+    }
+
+    document.getElementById('logConsole').innerHTML = '';
+    btn.disabled = true;
+
+    try {
+        const fila = await carregarDadosABA2();
+        log(`Linhas lidas com sucesso. Total de ${fila.length} áudio(s) para gerar.`, 'sucesso');
+
+        if (fila.length === 0) {
+            log('Nenhum áudio pendente encontrado (verifique se as células de texto/arquivo estão preenchidas).', 'alerta');
+            btn.disabled = false;
+            return;
         }
 
-        const blob = await response.blob();
-        
-        // Aciona o download direto para a máquina local
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = nomeArquivo;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        
-        logMessage(` Gravado com sucesso: ${nomeArquivo}`);
+        let patrimônioAtual = '';
 
-      } catch (err) {
-        logMessage(`❌ Erro ElevenLabs (${nomeArquivo}): ${err.message}`);
-      }
+        for (let i = 0; i < fila.length; i++) {
+            const item = fila[i];
+
+            if (item.patrimonio !== patrimônioAtual) {
+                patrimônioAtual = item.patrimonio;
+                log(`\n==================================================`, 'info');
+                log(`📍 Patrimônio: ${patrimônioAtual}`, 'info');
+                log(`==================================================`, 'info');
+            }
+
+            log(`⏳ [${i + 1}/${fila.length}] Gerando áudio ${item.idioma}: "${item.arquivo}"...`, 'normal');
+
+            try {
+                const blobAudio = await gerarAudioElevenLabs(apiKey, item);
+                baixarArquivo(blobAudio, item.arquivo);
+                log(`✅ Concluído e baixado: ${item.arquivo}`, 'sucesso');
+            } catch (errAudio) {
+                log(`❌ Falha ao gerar ${item.arquivo}: ${errAudio.message}`, 'erro');
+            }
+
+            // Pausa de 1 segundo entre requisições para evitar rate limit
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        log(`\n🎉 Processamento finalizado com sucesso!`, 'sucesso');
+
+    } catch (err) {
+        log(`❌ Erro ao processar a ABA2: ${err.message}`, 'erro');
+    } finally {
+        btn.disabled = false;
     }
-  </script>
+}
+</script>
+
 </body>
 </html>
