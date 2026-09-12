@@ -79,7 +79,7 @@
     // ============================================================
     // CONFIGURAÇÕES INTERNAS DYART
     // ============================================================
-    // Cole a sua chave de API abaixo entre as aspas:
+    // Insira a chave de API da ElevenLabs dentro das aspas abaixo:
     const API_KEY_ELEVENLABS = "sk_29ed24bb2146ebd2d02ea331b52e1949b962aa022db108c1"; 
 
     const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
@@ -93,7 +93,7 @@
       logDiv.scrollTop = logDiv.scrollHeight;
     }
 
-    // Extração segura de texto para evitar erros de conversão ou datas do GViz
+    // Extração segura de texto para evitar erros de tipo ou formatação de datas
     function extrairTexto(celula) {
       if (!celula) return '';
       let val = celula.f !== undefined && celula.f !== null ? celula.f : celula.v;
@@ -105,7 +105,7 @@
       const btn = document.getElementById('btnIniciar');
 
       if (!API_KEY_ELEVENLABS || API_KEY_ELEVENLABS === "COLE_SUA_CHAVE_AQUI") {
-        alert('Por favor, defina a chave da ElevenLabs na variável API_KEY_ELEVENLABS dentro do código.');
+        alert('Por favor, defina a chave da ElevenLabs na variável API_KEY_ELEVENLABS no código.');
         return;
       }
 
@@ -116,7 +116,6 @@
         const response = await fetch(SHEET_URL);
         const text = await response.text();
         
-        // Trata o retorno da API de visualização do Google
         const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
         const jsonData = JSON.parse(jsonString);
         const rows = jsonData.table.rows;
@@ -135,16 +134,12 @@
             continue;
           }
 
-          // Busca as IDs das vozes diretamente das 3 ÚLTIMAS COLUNAS da planilha (O, P, Q):
-          // Col O (14) = ID VOICE_PT | Col P (15) = ID VOICE_EN | Col Q (16) = ID VOICE_ES
+          // Busca as IDs das vozes direto das Colunas O (14), P (15) e Q (16)
           const voicePT = extrairTexto(row[14]);
           const voiceEN = extrairTexto(row[15]);
           const voiceES = extrairTexto(row[16]);
 
-          // Mapeamento dos Textos e Nomes dos Arquivos:
-          // Col E (4) = RESUMO PT | Col F (5)  = ÁUDIO_PT
-          // Col J (9) = RESUMO EN | Col K (10) = ÁUDIO_EN
-          // Col L (11) = RESUMO ES | Col M (12) = ÁUDIO_ES
+          // Textos e Áudios das Colunas E(4), F(5), J(9), K(10), L(11) e M(12)
           const idiomas = [
             { lang: 'PT', texto: extrairTexto(row[4]),  arquivo: extrairTexto(row[5]),  voiceId: voicePT },
             { lang: 'EN', texto: extrairTexto(row[9]),  arquivo: extrairTexto(row[10]), voiceId: voiceEN },
@@ -156,19 +151,19 @@
           logMessage(`==================================================`);
 
           for (const item of idiomas) {
-            // Se o texto ou o nome do arquivo estiverem vazios na planilha, pula o idioma
+            // Se o texto ou o nome do arquivo não estiverem preenchidos na linha, pula
             if (!item.texto || !item.arquivo) {
               logMessage(`⚠️ [${item.lang}] Sem texto ou nome de arquivo. Pulando...`);
               continue;
             }
 
-            // Se a célula do ID da Voz estiver vazia na planilha, avisa no log
+            // Se o ID da voz não foi colocado na coluna O, P ou Q da linha, pula
             if (!item.voiceId) {
-              logMessage(`❌ [${item.lang}] ID da voz não foi preenchido na coluna da planilha. Pulando...`);
+              logMessage(`❌ [${item.lang}] ID da voz não preenchido na coluna correspondente. Pulando...`);
               continue;
             }
 
-            // Garante a extensão .mp3 sem quebrar o código
+            // Garante a extensão .mp3 de forma segura
             let nomeFinal = item.arquivo;
             if (!nomeFinal.toLowerCase().endsWith('.mp3')) {
               nomeFinal += '.mp3';
@@ -177,7 +172,7 @@
             logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}...`);
             await gerarAudioElevenLabs(item.texto, nomeFinal, item.voiceId, API_KEY_ELEVENLABS);
             
-            // Pausa de 1 segundo entre chamadas de API
+            // Pausa de 1 segundo entre requisições
             await new Promise(r => setTimeout(r, 1000));
           }
         }
