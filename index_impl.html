@@ -66,7 +66,7 @@
       padding: 15px; 
       border-radius: 6px; 
       font-family: monospace; 
-      height: 280px; 
+      height: 300px; 
       overflow-y: auto; 
       white-space: pre-wrap; 
       font-size: 13px; 
@@ -77,12 +77,12 @@
 
   <div class="card">
     <h1>DYART Business Intelligence — Motor de Áudios (hip.hop)</h1>
-    <p>Geração automatizada de narrações via ElevenLabs para a pasta <code>IMPL_output_audios</code>.</p>
+    <p>Geração automatizada de narrações multilíngues via ElevenLabs para a pasta <code>IMPL_output_audios</code>.</p>
     
     <label for="apiKey">Chave da API ElevenLabs:</label>
-    <input type="password" id="apiKey" placeholder="Cole sua chave xi-api-key aqui (sk_...)">
+    <input type="password" id="apiKey" placeholder="Cole sua nova chave xi-api-key aqui (sk_...)">
 
-    <label for="voiceId">Voice ID (Voz Padrão - Roberta):</label>
+    <label for="voiceId">Voice ID Padrão (Fallback - Roberta PT-BR):</label>
     <input type="text" id="voiceId" value="RGymW84CSmfVugnA5tvA" placeholder="ID da Voz">
 
     <button class="btn" id="btnIniciar" onclick="processarPlanilha()">Iniciar Geração de Áudios</button>
@@ -97,15 +97,14 @@
     // ============================================================
     // CONFIGURAÇÕES GERAIS DYART (PLUG & PLAY)
     // ============================================================
-    // Se quiser fixar sua chave permanente no código, cole entre as aspas:
-    const CONFIG_API_KEY_DEFAULT = "sk_2be8e538eb422605abd0ea3092449529a2614c2a416d06d4"; 
-    // Voice ID da Roberta (Nativa PT-BR)
-    const CONFIG_VOICE_ID_DEFAULT = "RGymW84CSmfVugnA5tvA";
+    const CONFIG_API_KEY_DEFAULT = ""; // Cole sua nova chave de teste se desejar
+    const CONFIG_VOICE_ID_DEFAULT = "RGymW84CSmfVugnA5tvA"; // Roberta (PT-BR)
 
     const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+    const NOME_DA_ABA = 'ABA2';
 
-    // Carrega valores padrão na interface assim que abre a página
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(NOME_DA_ABA)}`;
+
     window.onload = () => {
       if (CONFIG_API_KEY_DEFAULT) {
         document.getElementById('apiKey').value = CONFIG_API_KEY_DEFAULT;
@@ -123,7 +122,7 @@
 
     async function processarPlanilha() {
       const apiKey = document.getElementById('apiKey').value.trim();
-      const voiceId = document.getElementById('voiceId').value.trim();
+      const voiceIdFallback = document.getElementById('voiceId').value.trim();
       const btn = document.getElementById('btnIniciar');
 
       if (!apiKey) {
@@ -131,63 +130,72 @@
         return;
       }
 
-      if (!voiceId) {
-        alert('Por favor, informe o Voice ID!');
-        return;
-      }
-
       btn.disabled = true;
-      logMessage('Lendo planilha do município...');
+      logMessage(`Lendo dados da ${NOME_DA_ABA}...`);
 
       try {
         const response = await fetch(SHEET_URL);
         const text = await response.text();
         
-        // Trata a resposta da API do Google GViz
+        // Converte o payload JSON da API do Google GViz
         const jsonData = JSON.parse(text.substring(47, text.length - 2));
         const rows = jsonData.table.rows;
 
-        logMessage(`Encontrados ${rows.length} registros na planilha.`);
+        logMessage(`Encontrados ${rows.length} registros na ${NOME_DA_ABA}.`);
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i].c;
           if (!row) continue;
 
-          // Mapeamento mantendo a Coluna A (auditoria) desconsiderada:
-          const nomePatrimonio = row[1] ? row[1].v : `Ponto ${i+1}`; // Coluna B (NOME DO PATRIMÔNIO)
-          const textoAudio     = row[4] ? row[4].v : null;           // Coluna E (TEXTO)
-          const prefixoAudio   = row[13] ? row[13].v : null;         // Coluna N (Prefixo)
+          const nomePatrimonio = row[0] ? row[0].v : `Ponto ${i+1}`;
+          
+          // Busca Voice ID dinâmico da Coluna N (índice 13) ou usa a voz padrão da tela
+          const voiceIdLinha = (row[13] && row[13].v) ? row[13].v.trim() : voiceIdFallback;
 
-          if (!prefixoAudio) {
-            logMessage(`⚠️ Linha ${i+1} (${nomePatrimonio}): Coluna N (Prefixo) vazia. Pulando...`);
-            continue;
+          // Mapeamento dos 3 Idiomas baseado nas colunas da ABA2:
+          // Col C (2) = RESUMO PT | Col D (3) = ÁUDIO_PT
+          // Col H (7) = RESUMO EN | Col I (8) = ÁUDIO_EN
+          // Col J (9) = RESUMO ES | Col K (10) = ÁUDIO_ES
+          const idiomas = [
+            { lang: 'PT', texto: row[2]?.v,  arquivo: row[3]?.v },
+            { lang: 'EN', texto: row[7]?.v,  arquivo: row[8]?.v },
+            { lang: 'ES', texto: row[9]?.v,  arquivo: row[10]?.v }
+          ];
+
+          logMessage(`\n==================================================`);
+          logMessage(`📍 Patrimônio: ${nomePatrimonio}`);
+          logMessage(`==================================================`);
+
+          for (const item of idiomas) {
+            if (!item.texto || !item.arquivo) {
+              logMessage(`⚠️ [${item.lang}] Texto ou Nome do Arquivo não encontrado. Pulando...`);
+              continue;
+            }
+
+            if (!voiceIdLinha) {
+              logMessage(`❌ [${item.lang}] Nenhum Voice ID informado para a síntese.`);
+              continue;
+            }
+
+            // Garante a extensão .mp3 caso a fórmula CONCATENAR entregue apenas o prefixo
+            const nomeFinal = item.arquivo.endsWith('.mp3') ? item.arquivo : `${item.arquivo}.mp3`;
+
+            logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}...`);
+            await gerarAudioElevenLabs(item.texto, nomeFinal, voiceIdLinha, apiKey);
           }
-
-          if (!textoAudio) {
-            logMessage(`⚠️ Linha ${i+1} (${nomePatrimonio}): Coluna E (Texto) sem conteúdo. Pulando...`);
-            continue;
-          }
-
-          logMessage(`\n--- Processando: ${nomePatrimonio} [${prefixoAudio}] ---`);
-
-          // Nome do arquivo pronto para a pasta IMPL_output_audios
-          const nomeArquivoPT = `PT_${prefixoAudio}.mp3`;
-          await gerarAudioElevenLabs(textoAudio, nomeArquivoPT, voiceId, apiKey);
         }
 
-        logMessage('\n Processamento concluído com sucesso!');
+        logMessage('\n Processamento multilíngue concluído!');
         logMessage(`Mova os arquivos baixados para a pasta IMPL_output_audios no Google Drive.`);
 
       } catch (error) {
-        logMessage(`❌ Erro ao ler planilha: ${error.message}`);
+        logMessage(`❌ Erro ao processar a ${NOME_DA_ABA}: ${error.message}`);
       } finally {
         btn.disabled = false;
       }
     }
 
     async function gerarAudioElevenLabs(texto, nomeArquivo, voiceId, apiKey) {
-      logMessage(`🎙️ Sintetizando narração: ${nomeArquivo}...`);
-      
       const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
       
       try {
@@ -214,7 +222,7 @@
 
         const blob = await response.blob();
         
-        // Dispara o download automático com a nomenclatura perfeita
+        // Aciona o download direto para a máquina local
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
