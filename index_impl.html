@@ -5,15 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DYART - Gerador de Áudios (hip.hop)</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-    .card { background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 20px auto; }
-    h1 { margin-top: 0; color: #1a73e8; font-size: 22px; }
-    label { font-weight: bold; display: block; margin-top: 12px; margin-bottom: 4px; }
-    input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    .btn { background: #1a73e8; color: #fff; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 16px; }
-    .btn:hover { background: #1557b0; }
-    .btn:disabled { background: #ccc; cursor: not-allowed; }
-    #log { background: #1e1e1e; color: #00ff66; padding: 15px; border-radius: 6px; font-family: monospace; height: 280px; overflow-y: auto; white-space: pre-wrap; font-size: 13px; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background-color: #f4f6f9; 
+      margin: 0; 
+      padding: 20px; 
+      color: #333; 
+    }
+    .card { 
+      background: #fff; 
+      padding: 24px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+      max-width: 800px; 
+      margin: 0 auto 20px auto; 
+    }
+    h1 { 
+      margin-top: 0; 
+      color: #1a73e8; 
+      font-size: 22px; 
+    }
+    p {
+      color: #555;
+      font-size: 14px;
+    }
+    label { 
+      font-weight: bold; 
+      display: block; 
+      margin-top: 14px; 
+      margin-bottom: 4px; 
+    }
+    input[type="text"], input[type="password"] { 
+      width: 100%; 
+      padding: 10px; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      box-sizing: border-box; 
+    }
+    .btn { 
+      background: #1a73e8; 
+      color: #fff; 
+      border: none; 
+      padding: 12px 20px; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-size: 15px; 
+      font-weight: bold; 
+      margin-top: 20px; 
+    }
+    .btn:hover { 
+      background: #1557b0; 
+    }
+    .btn:disabled { 
+      background: #ccc; 
+      cursor: not-allowed; 
+    }
+    #log { 
+      background: #1e1e1e; 
+      color: #00ff66; 
+      padding: 15px; 
+      border-radius: 6px; 
+      font-family: monospace; 
+      height: 280px; 
+      overflow-y: auto; 
+      white-space: pre-wrap; 
+      font-size: 13px; 
+    }
   </style>
 </head>
 <body>
@@ -23,10 +80,10 @@
     <p>Geração automatizada de narrações via ElevenLabs para a pasta <code>IMPL_output_audios</code>.</p>
     
     <label for="apiKey">Chave da API ElevenLabs:</label>
-    <input type="password" id="apiKey" placeholder="Cole sua chave xi-api-key aqui">
+    <input type="password" id="apiKey" placeholder="Cole sua chave xi-api-key aqui (sk_...)">
 
-    <label for="voiceId">Voice ID (Português):</label>
-    <input type="text" id="voiceId" value="21m00Tcm4TlvDq8ikWAM" placeholder="ID da Voz">
+    <label for="voiceId">Voice ID (Voz Padrão - Roberta):</label>
+    <input type="text" id="voiceId" value="RGymW84CSmfVugnA5tvA" placeholder="ID da Voz">
 
     <button class="btn" id="btnIniciar" onclick="processarPlanilha()">Iniciar Geração de Áudios</button>
   </div>
@@ -37,8 +94,26 @@
   </div>
 
   <script>
+    // ============================================================
+    // CONFIGURAÇÕES GERAIS DYART (PLUG & PLAY)
+    // ============================================================
+    // Se quiser fixar sua chave permanente no código, cole entre as aspas:
+    const CONFIG_API_KEY_DEFAULT = "sk_2be8e538eb422605abd0ea3092449529a2614c2a416d06d4"; 
+    // Voice ID da Roberta (Nativa PT-BR)
+    const CONFIG_VOICE_ID_DEFAULT = "RGymW84CSmfVugnA5tvA";
+
     const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+
+    // Carrega valores padrão na interface assim que abre a página
+    window.onload = () => {
+      if (CONFIG_API_KEY_DEFAULT) {
+        document.getElementById('apiKey').value = CONFIG_API_KEY_DEFAULT;
+      }
+      if (CONFIG_VOICE_ID_DEFAULT) {
+        document.getElementById('voiceId').value = CONFIG_VOICE_ID_DEFAULT;
+      }
+    };
 
     function logMessage(msg) {
       const logDiv = document.getElementById('log');
@@ -56,6 +131,11 @@
         return;
       }
 
+      if (!voiceId) {
+        alert('Por favor, informe o Voice ID!');
+        return;
+      }
+
       btn.disabled = true;
       logMessage('Lendo planilha do município...');
 
@@ -63,7 +143,7 @@
         const response = await fetch(SHEET_URL);
         const text = await response.text();
         
-        // Trata a resposta do Google GViz
+        // Trata a resposta da API do Google GViz
         const jsonData = JSON.parse(text.substring(47, text.length - 2));
         const rows = jsonData.table.rows;
 
@@ -73,8 +153,8 @@
           const row = rows[i].c;
           if (!row) continue;
 
-          // Mapeamento baseado no Forms original:
-          const nomePatrimonio = row[1] ? row[1].v : `Ponto ${i+1}`; // Coluna B
+          // Mapeamento mantendo a Coluna A (auditoria) desconsiderada:
+          const nomePatrimonio = row[1] ? row[1].v : `Ponto ${i+1}`; // Coluna B (NOME DO PATRIMÔNIO)
           const textoAudio     = row[4] ? row[4].v : null;           // Coluna E (TEXTO)
           const prefixoAudio   = row[13] ? row[13].v : null;         // Coluna N (Prefixo)
 
@@ -90,13 +170,13 @@
 
           logMessage(`\n--- Processando: ${nomePatrimonio} [${prefixoAudio}] ---`);
 
-          // Nome exato para salvar na IMPL_output_audios
+          // Nome do arquivo pronto para a pasta IMPL_output_audios
           const nomeArquivoPT = `PT_${prefixoAudio}.mp3`;
           await gerarAudioElevenLabs(textoAudio, nomeArquivoPT, voiceId, apiKey);
         }
 
         logMessage('\n Processamento concluído com sucesso!');
-        logMessage(`Mova os arquivos gerados para a pasta IMPL_output_audios no Google Drive.`);
+        logMessage(`Mova os arquivos baixados para a pasta IMPL_output_audios no Google Drive.`);
 
       } catch (error) {
         logMessage(`❌ Erro ao ler planilha: ${error.message}`);
@@ -134,7 +214,7 @@
 
         const blob = await response.blob();
         
-        // Baixa o arquivo mp3 com a nomenclatura padronizada
+        // Dispara o download automático com a nomenclatura perfeita
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
