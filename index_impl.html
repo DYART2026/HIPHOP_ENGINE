@@ -79,8 +79,10 @@
     // ============================================================
     // CONFIGURAÇÕES INTERNAS DYART
     // ============================================================
-    // Insira a chave de API da ElevenLabs dentro das aspas abaixo:
     const API_KEY_ELEVENLABS = "sk_29ed24bb2146ebd2d02ea331b52e1949b962aa022db108c1"; 
+    
+    // Voice ID da Roberta (usado se a coluna da planilha estiver em branco)
+    const VOICE_ROBERTA_DEFAULT = "RGymW84CSmfVugnA5tvA";
 
     const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
     const NOME_DA_ABA = 'ABA2';
@@ -89,13 +91,14 @@
 
     function logMessage(msg) {
       const logDiv = document.getElementById('log');
-      logDiv.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
+      logDiv.textContent += `\n${msg}`;
       logDiv.scrollTop = logDiv.scrollHeight;
     }
 
-    // Extração segura de texto para evitar erros de tipo ou formatação de datas
-    function extrairTexto(celula) {
-      if (!celula) return '';
+    // Função de extração por índice de coluna (0 = Coluna A, 1 = Coluna B, etc.)
+    function lerColuna(celulasLinha, indiceColuna) {
+      if (!celulasLinha || !celulasLinha[indiceColuna]) return '';
+      const celula = celulasLinha[indiceColuna];
       let val = celula.f !== undefined && celula.f !== null ? celula.f : celula.v;
       if (val === null || val === undefined) return '';
       return String(val).trim();
@@ -105,12 +108,12 @@
       const btn = document.getElementById('btnIniciar');
 
       if (!API_KEY_ELEVENLABS || API_KEY_ELEVENLABS === "COLE_SUA_CHAVE_AQUI") {
-        alert('Por favor, defina a chave da ElevenLabs na variável API_KEY_ELEVENLABS no código.');
+        alert('Por favor, insira a chave da ElevenLabs na variável API_KEY_ELEVENLABS no código.');
         return;
       }
 
       btn.disabled = true;
-      document.getElementById('log').textContent = `[${new Date().toLocaleTimeString()}] Lendo dados da ${NOME_DA_ABA}...`;
+      document.getElementById('log').textContent = `Conectando ao Google Sheets (${NOME_DA_ABA})...`;
 
       try {
         const response = await fetch(SHEET_URL);
@@ -118,32 +121,35 @@
         
         const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
         const jsonData = JSON.parse(jsonString);
-        const rows = jsonData.table.rows;
+        const linhas = jsonData.table.rows;
 
-        logMessage(`Encontrados ${rows.length} registros na ${NOME_DA_ABA}.`);
+        logMessage(`Registros encontrados na ${NOME_DA_ABA}: ${linhas.length}`);
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i].c;
-          if (!row) continue;
+        for (let i = 0; i < linhas.length; i++) {
+          const colunas = linhas[i].c;
+          if (!colunas) continue;
 
-          // Coluna A (0) = NOME DO PATRIMÔNIO
-          const nomePatrimonio = extrairTexto(row[0]);
+          // Coluna A (índice 0) = NOME DO PATRIMÔNIO
+          const nomePatrimonio = lerColuna(colunas, 0);
           
-          // Ignora cabeçalho ou linhas em branco
+          // Ignora a linha de cabeçalho ou patrimônios vazios
           if (!nomePatrimonio || nomePatrimonio.toUpperCase().includes("NOME DO PATRIMÔNIO")) {
             continue;
           }
 
-          // Busca as IDs das vozes direto das Colunas O (14), P (15) e Q (16)
-          const voicePT = extrairTexto(row[14]);
-          const voiceEN = extrairTexto(row[15]);
-          const voiceES = extrairTexto(row[16]);
+          // Leituras das IDs de voz: Coluna O (índice 14), Coluna P (índice 15), Coluna Q (índice 16)
+          const voicePT = lerColuna(colunas, 14) || VOICE_ROBERTA_DEFAULT;
+          const voiceEN = lerColuna(colunas, 15) || VOICE_ROBERTA_DEFAULT;
+          const voiceES = lerColuna(colunas, 16) || VOICE_ROBERTA_DEFAULT;
 
-          // Textos e Áudios das Colunas E(4), F(5), J(9), K(10), L(11) e M(12)
+          // Mapeamento dos idiomas:
+          // PT: Texto na Coluna E (4), Arquivo na Coluna F (5)
+          // EN: Texto na Coluna J (9), Arquivo na Coluna K (10)
+          // ES: Texto na Coluna L (11), Arquivo na Coluna M (12)
           const idiomas = [
-            { lang: 'PT', texto: extrairTexto(row[4]),  arquivo: extrairTexto(row[5]),  voiceId: voicePT },
-            { lang: 'EN', texto: extrairTexto(row[9]),  arquivo: extrairTexto(row[10]), voiceId: voiceEN },
-            { lang: 'ES', texto: extrairTexto(row[11]), arquivo: extrairTexto(row[12]), voiceId: voiceES }
+            { lang: 'PT', texto: lerColuna(colunas, 4),  arquivo: lerColuna(colunas, 5),  voiceId: voicePT },
+            { lang: 'EN', texto: lerColuna(colunas, 9),  arquivo: lerColuna(colunas, 10), voiceId: voiceEN },
+            { lang: 'ES', texto: lerColuna(colunas, 11), arquivo: lerColuna(colunas, 12), voiceId: voiceES }
           ];
 
           logMessage(`\n==================================================`);
@@ -151,37 +157,30 @@
           logMessage(`==================================================`);
 
           for (const item of idiomas) {
-            // Se o texto ou o nome do arquivo não estiverem preenchidos na linha, pula
+            // Pula o idioma apenas se o texto ou o nome do arquivo estiverem em branco na planilha
             if (!item.texto || !item.arquivo) {
-              logMessage(`⚠️ [${item.lang}] Sem texto ou nome de arquivo. Pulando...`);
+              logMessage(`⚠️ [${item.lang}] Sem texto ou nome de arquivo preenchido. Pulando...`);
               continue;
             }
 
-            // Se o ID da voz não foi colocado na coluna O, P ou Q da linha, pula
-            if (!item.voiceId) {
-              logMessage(`❌ [${item.lang}] ID da voz não preenchido na coluna correspondente. Pulando...`);
-              continue;
-            }
-
-            // Garante a extensão .mp3 de forma segura
             let nomeFinal = item.arquivo;
             if (!nomeFinal.toLowerCase().endsWith('.mp3')) {
               nomeFinal += '.mp3';
             }
 
-            logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}...`);
+            logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}... (Voz: ${item.voiceId})`);
             await gerarAudioElevenLabs(item.texto, nomeFinal, item.voiceId, API_KEY_ELEVENLABS);
             
-            // Pausa de 1 segundo entre requisições
+            // Pausa de 1 segundo entre chamadas
             await new Promise(r => setTimeout(r, 1000));
           }
         }
 
-        logMessage('\n🎉 Processamento multilíngue concluído!');
+        logMessage('\n🎉 Processamento concluído com sucesso!');
         logMessage(`Mova os arquivos baixados para a pasta IMPL_output_audios no Google Drive.`);
 
       } catch (error) {
-        logMessage(`❌ Erro ao processar a ${NOME_DA_ABA}: ${error.message}`);
+        logMessage(`❌ Erro durante o processamento: ${error.message}`);
       } finally {
         btn.disabled = false;
       }
@@ -215,7 +214,6 @@
 
         const blob = await response.blob();
         
-        // Aciona o download automático do áudio .mp3
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
@@ -225,10 +223,10 @@
         a.remove();
         window.URL.revokeObjectURL(downloadUrl);
         
-        logMessage(`✅ Gravado com sucesso: ${nomeArquivo}`);
+        logMessage(`✅ Arquivo gerado e baixado: ${nomeArquivo}`);
 
       } catch (err) {
-        logMessage(`❌ Erro ElevenLabs (${nomeArquivo}): ${err.message}`);
+        logMessage(`❌ Erro ao gerar ${nomeArquivo}: ${err.message}`);
       }
     }
   </script>
