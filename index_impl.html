@@ -60,7 +60,6 @@
       background: #ccc; 
       cursor: not-allowed; 
     }
-    /* Estilo da Rodinha (Spinner) */
     .spinner {
       width: 16px;
       height: 16px;
@@ -79,7 +78,7 @@
       padding: 15px; 
       border-radius: 6px; 
       font-family: monospace; 
-      height: 350px; 
+      height: 380px; 
       overflow-y: auto; 
       white-space: pre-wrap; 
       font-size: 13px; 
@@ -91,8 +90,7 @@
 
   <div class="card">
     <h1>DYART Business Intelligence — Motor de Áudios (hip.hop)</h1>
-    <!-- Carimbo de Versão: Ao alterar este horário, você sabe de primeira se o F5 carregou a nova versão -->
-    <div class="version-tag">Versão Ativa: Build 18:43 (Vozes Colunas O-Q)</div>
+    <div class="version-tag">Versão Ativa: Build 11:00 (Multilíngue PT/EN/ES)</div>
     <p>Geração automatizada de narrações multilíngues via ElevenLabs a partir dos dados da <strong>ABA2</strong>.</p>
 
     <button class="btn" id="btnIniciar" onclick="processarPlanilha()">
@@ -110,9 +108,9 @@
     // ============================================================
     // CONFIGURAÇÕES INTERNAS DYART
     // ============================================================
-    const API_KEY_ELEVENLABS = "sk_29ed24bb2146ebd2d02ea331b52e1949b962aa022db108c1"; 
+    const API_KEY_ELEVENLABS = "COLE_SUA_CHAVE_AQUI"; 
     
-    // Voice ID da Roberta (usado se a coluna da planilha estiver em branco)
+    // Voice ID Fallback da Roberta
     const VOICE_ROBERTA_DEFAULT = "RGymW84CSmfVugnA5tvA";
 
     const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
@@ -126,11 +124,13 @@
       logDiv.scrollTop = logDiv.scrollHeight;
     }
 
-    // Função de extração por índice de coluna (0 = Coluna A, 1 = Coluna B, etc.)
+    // Leitura resiliente da célula
     function lerColuna(celulasLinha, indiceColuna) {
-      if (!celulasLinha || !celulasLinha[indiceColuna]) return '';
+      if (!celulasLinha || indiceColuna >= celulasLinha.length || !celulasLinha[indiceColuna]) {
+        return '';
+      }
       const celula = celulasLinha[indiceColuna];
-      let val = celula.f !== undefined && celula.f !== null ? celula.f : celula.v;
+      let val = (celula.v !== undefined && celula.v !== null) ? celula.v : celula.f;
       if (val === null || val === undefined) return '';
       return String(val).trim();
     }
@@ -145,7 +145,6 @@
         return;
       }
 
-      // Ativa o spinner visual e bloqueia o botão
       btn.disabled = true;
       spinner.style.display = 'inline-block';
       btnTexto.textContent = 'Processando...';
@@ -165,23 +164,22 @@
           const colunas = linhas[i].c;
           if (!colunas) continue;
 
-          // Coluna A (índice 0) = NOME DO PATRIMÔNIO
+          // Coluna A (0) = NOME DO PATRIMÔNIO
           const nomePatrimonio = lerColuna(colunas, 0);
           
-          // Ignora a linha de cabeçalho ou patrimônios vazios
           if (!nomePatrimonio || nomePatrimonio.toUpperCase().includes("NOME DO PATRIMÔNIO")) {
             continue;
           }
 
-          // Leituras das IDs de voz: Coluna O (14), Coluna P (15), Coluna Q (16)
+          // IDs de voz: O (14), P (15), Q (16)
           const voicePT = lerColuna(colunas, 14) || VOICE_ROBERTA_DEFAULT;
           const voiceEN = lerColuna(colunas, 15) || VOICE_ROBERTA_DEFAULT;
           const voiceES = lerColuna(colunas, 16) || VOICE_ROBERTA_DEFAULT;
 
-          // Mapeamento dos idiomas:
-          // PT: Texto na Coluna E (4), Arquivo na Coluna F (5)
-          // EN: Texto na Coluna J (9), Arquivo na Coluna K (10)
-          // ES: Texto na Coluna L (11), Arquivo na Coluna M (12)
+          // Mapeamento exato das colunas da ABA2:
+          // PT: Coluna E (4) [Texto] | Coluna F (5) [Áudio]
+          // EN: Coluna J (9) [Texto] | Coluna K (10) [Áudio]
+          // ES: Coluna L (11) [Texto] | Coluna M (12) [Áudio]
           const idiomas = [
             { lang: 'PT', texto: lerColuna(colunas, 4),  arquivo: lerColuna(colunas, 5),  voiceId: voicePT },
             { lang: 'EN', texto: lerColuna(colunas, 9),  arquivo: lerColuna(colunas, 10), voiceId: voiceEN },
@@ -193,9 +191,17 @@
           logMessage(`==================================================`);
 
           for (const item of idiomas) {
-            // Pula o idioma apenas se o texto ou o nome do arquivo estiverem em branco na planilha
-            if (!item.texto || !item.arquivo) {
-              logMessage(`⚠️ [${item.lang}] Sem texto ou nome de arquivo preenchido. Pulando...`);
+            // Detalha no Log o motivo exato se algum campo estiver ausente
+            if (!item.texto && !item.arquivo) {
+              logMessage(`⚠️ [${item.lang}] Texto e Nome de Arquivo ausentes. Pulando...`);
+              continue;
+            }
+            if (!item.texto) {
+              logMessage(`⚠️ [${item.lang}] Texto ausente na coluna correspondente. Pulando...`);
+              continue;
+            }
+            if (!item.arquivo) {
+              logMessage(`⚠️ [${item.lang}] Nome do arquivo .mp3 ausente na coluna correspondente. Pulando...`);
               continue;
             }
 
@@ -207,7 +213,6 @@
             logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}... (Voz: ${item.voiceId})`);
             await gerarAudioElevenLabs(item.texto, nomeFinal, item.voiceId, API_KEY_ELEVENLABS);
             
-            // Pausa de 1 segundo entre chamadas
             await new Promise(r => setTimeout(r, 1000));
           }
         }
@@ -218,7 +223,6 @@
       } catch (error) {
         logMessage(`❌ Erro durante o processamento: ${error.message}`);
       } finally {
-        // Desativa o spinner ao finalizar
         btn.disabled = false;
         spinner.style.display = 'none';
         btnTexto.textContent = 'Iniciar Geração de Áudios';
@@ -265,7 +269,7 @@
         logMessage(`✅ Arquivo gerado e baixado: ${nomeArquivo}`);
 
       } catch (err) {
-        logMessage(`❌ Erro ao gerar ${nomeArquivo}: ${err.message}`);
+        logMessage(`❌ Erro ElevenLabs (${nomeArquivo}): ${err.message}`);
       }
     }
   </script>
