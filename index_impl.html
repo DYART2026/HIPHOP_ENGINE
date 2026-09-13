@@ -78,7 +78,7 @@
       padding: 15px; 
       border-radius: 6px; 
       font-family: monospace; 
-      height: 380px; 
+      height: 400px; 
       overflow-y: auto; 
       white-space: pre-wrap; 
       font-size: 13px; 
@@ -90,7 +90,7 @@
 
   <div class="card">
     <h1>DYART Business Intelligence — Motor de Áudios (hip.hop)</h1>
-    <div class="version-tag">Versão Ativa: Build 15:30 (Versão Definitiva de Produção)</div>
+    <div class="version-tag">Versão Ativa: Build 15:45 (Métricas de Tempo e Créditos)</div>
     <p>Geração automatizada de narrações multilíngues via ElevenLabs a partir da planilha de dados consolidada.</p>
 
     <button class="btn" id="btnIniciar" onclick="processarPlanilha()">
@@ -114,8 +114,6 @@
     const VOICE_ROBERTA_DEFAULT = "RGymW84CSmfVugnA5tvA";
 
     const SPREADSHEET_ID = '1jJICHQs7sWhx82q6D3fZyCUcht5j9JINJRaHpbyV0Yk';
-
-    // A requisição puxa direto a primeira aba por padrão
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
 
     function logMessage(msg) {
@@ -147,7 +145,14 @@
       btn.disabled = true;
       spinner.style.display = 'inline-block';
       btnTexto.textContent = 'Processando...';
-      document.getElementById('log').textContent = `Conectando ao Google Sheets...`;
+
+      // Marcação do horário e tempo inicial
+      const horaInicio = new Date();
+      const tempoInicio = performance.now();
+      let totalCaracteresConsumidos = 0;
+      let totalAudiosGerados = 0;
+
+      document.getElementById('log').textContent = `🚀 Início do lote: ${horaInicio.toLocaleTimeString('pt-BR')}\nConectando ao Google Sheets...`;
 
       try {
         const response = await fetch(SHEET_URL);
@@ -175,10 +180,7 @@
           const voiceEN = lerColuna(colunas, 15) || VOICE_ROBERTA_DEFAULT;
           const voiceES = lerColuna(colunas, 16) || VOICE_ROBERTA_DEFAULT;
 
-          // Mapeamento Perfeito baseado no DUMP:
-          // PT: Coluna E (4) [Texto] | Coluna F (5) [Áudio]
-          // EN: Coluna J (9) [Texto] | Coluna K (10) [Áudio]
-          // ES: Coluna L (11) [Texto] | Coluna M (12) [Áudio]
+          // Mapeamento: PT (4, 5) | EN (9, 10) | ES (11, 12)
           const idiomas = [
             { lang: 'PT', texto: lerColuna(colunas, 4),  arquivo: lerColuna(colunas, 5),  voiceId: voicePT },
             { lang: 'EN', texto: lerColuna(colunas, 9),  arquivo: lerColuna(colunas, 10), voiceId: voiceEN },
@@ -208,15 +210,38 @@
               nomeFinal += '.mp3';
             }
 
-            logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal}... (Voz: ${item.voiceId})`);
+            const tamanhoTexto = item.texto.length;
+            logMessage(`🎙️ Sintetizando [${item.lang}]: ${nomeFinal} (${tamanhoTexto} chars)... (Voz: ${item.voiceId})`);
+            
             await gerarAudioElevenLabs(item.texto, nomeFinal, item.voiceId, API_KEY_ELEVENLABS);
             
-            // Pausa estratégica de 1 segundo entre chamadas para não sobrecarregar a API
+            totalCaracteresConsumidos += tamanhoTexto;
+            totalAudiosGerados++;
+
+            // Pausa estratégica de 1 segundo entre chamadas
             await new Promise(r => setTimeout(r, 1000));
           }
         }
 
-        logMessage('\n🎉 Processamento concluído com sucesso!');
+        // Cálculo das métricas finais
+        const horaFim = new Date();
+        const tempoFim = performance.now();
+        const duracaoSegundos = ((tempoFim - tempoInicio) / 1000).toFixed(1);
+        const minutos = Math.floor(duracaoSegundos / 60);
+        const segundos = (duracaoSegundos % 60).toFixed(1);
+
+        const tempoFormatado = minutos > 0 ? `${minutos}m ${segundos}s` : `${duracaoSegundos}s`;
+
+        logMessage('\n==================================================');
+        logMessage('📊 RESUMO DE EXECUÇÃO E MÉTRICAS DA SÍNTESE');
+        logMessage('==================================================');
+        logMessage(`⏱️ Horário de Início:   ${horaInicio.toLocaleTimeString('pt-BR')}`);
+        logMessage(`⏱️ Horário de Término:  ${horaFim.toLocaleTimeString('pt-BR')}`);
+        logMessage(`⏳ Tempo Total:         ${tempoFormatado}`);
+        logMessage(`🔊 Áudios Gerados:      ${totalAudiosGerados} arquivos`);
+        logMessage(`💳 Créditos Utilizados: ${totalCaracteresConsumidos.toLocaleString('pt-BR')} caracteres`);
+        logMessage('==================================================');
+        logMessage('🎉 Processamento concluído com sucesso!');
         logMessage(`Mova os arquivos baixados para a pasta IMPL_output_audios no Google Drive.`);
 
       } catch (error) {
