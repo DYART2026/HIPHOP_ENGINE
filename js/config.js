@@ -13,5 +13,12 @@ const CITY_CONFIGS = {
     gaMeasurementId: "G-CSC7E5E5QC", // Cole o ID real do GA4 do Rio
     sheetUrl: "https://docs.google.com/spreadsheets/d/1oxeXlXTxybVMNYWzauCfp_GATkFzVoXqpTtvKKmmkHg/gviz/tq?",
     defaultCoords: [-22.9068, -43.1729],
+  },
+  "ipanema": {
+    cityName: "Rio de Janeiro",
+    folderName: "rio_de_janeiro",
+    gaMeasurementId: "G-CSC7E5E5QC", // Cole o ID real do GA4 do Rio
+    sheetUrl: "https://docs.google.com/spreadsheets/d/1oxeXlXTxybVMNYWzauCfp_GATkFzVoXqpTtvKKmmkHg/gviz/tq?",
+    defaultCoords: [-22.9068, -43.1729],
   }
 };
