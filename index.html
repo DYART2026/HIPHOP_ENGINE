@@ -253,10 +253,12 @@ function normalizarTexto(txt) {
     return String(txt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
+// Converte qualquer URL do GitHub para imagem bruta RAW e trata caminhos locais
 function processarUrlMidia(caminhoInput, subpastaPadrao, fallbackNome) {
     if (!caminhoInput) return `${BASE_ASSETS}${subpastaPadrao}/${fallbackNome}`;
     let url = String(caminhoInput).trim();
 
+    // Prioridade máxima: se for link do GitHub, converte para Raw
     if (url.includes('github.com')) {
         return url.replace('github.com', 'raw.githubusercontent.com')
                   .replace('/blob/', '/')
@@ -410,44 +412,38 @@ async function carregarDadosPontos() {
             if (!linha || !linha.c) return;
             const val = (idx) => linha.c[idx] ? String(linha.c[idx].v || linha.c[idx].f || "").trim() : "";
 
-            let nomePatrimonio = val(0); // A: NOME DO PATRIMÔNIO
+            let nomePatrimonio = val(0);
             const txtNorm = normalizarTexto(nomePatrimonio);
 
             if (!nomePatrimonio || txtNorm.includes("patrimonio") || txtNorm.includes("nome") || txtNorm.includes("tipo_mapa")) return;
 
-            let latRaw = val(1).replace(',', '.'); // B: LATITUDE
-            let lngRaw = val(2).replace(',', '.'); // C: LONGITUDE
+            let latRaw = val(1).replace(',', '.');
+            let lngRaw = val(2).replace(',', '.');
             let latNum = parseFloat(latRaw);
             let lngNum = parseFloat(lngRaw);
 
-            let urlBalaoDireta = processarUrlMidia(val(3), "baloes", "Balao_E.png"); // D: LINK DO BALÃO
+            // Lê e converte a URL do GitHub da Coluna D (índice 3)
+            let urlBalaoDireta = processarUrlMidia(val(3), "baloes", "Balao_E.png");
 
             if (!isNaN(latNum) && !isNaN(lngNum)) {
-                let cat = val(7) || "Geral"; // H: CATEGORIA
+                let cat = val(7) || "Geral";
                 if (cat !== "Geral") categoriasSet.add(cat);
 
                 let mapaResumos = {};
                 let mapaAudios = {};
 
-                // E: RESUMO PT | F: ÁUDIO PT
                 mapaResumos[ordemLangs[0]] = val(4);
                 mapaAudios[ordemLangs[0]] = processarAudioLocal(val(5), ordemLangs[0]);
 
-                // J: RESUMO EN | K: ÁUDIO EN
                 if (ordemLangs[1]) {
                     mapaResumos[ordemLangs[1]] = val(9);
                     mapaAudios[ordemLangs[1]] = processarAudioLocal(val(10), ordemLangs[1]);
                 }
 
-                // L: RESUMO ES | M: ÁUDIO ES
                 if (ordemLangs[2]) {
                     mapaResumos[ordemLangs[2]] = val(11);
                     mapaAudios[ordemLangs[2]] = processarAudioLocal(val(12), ordemLangs[2]);
                 }
-
-                // N: ON/OFF (Índice 13)
-                let statusGeofence = val(13).toUpperCase().trim();
-                let geofenceAtivo = (statusGeofence !== 'OFF' && statusGeofence !== '0' && statusGeofence !== 'DESLIGADO');
 
                 pontosHistoricos.push({
                     id: contadorId++,
@@ -455,13 +451,12 @@ async function carregarDadosPontos() {
                     lat: latNum,
                     lng: lngNum,
                     linkBalao: urlBalaoDireta,
-                    raio: parseInt(val(6)) || 30, // G: RAIO GEOFENCE
+                    raio: parseInt(val(6)) || 30,
                     categoria: cat,
-                    foto: formatarLinkImagemDrive(val(8)), // I: IMAGEM/FOTO
+                    foto: formatarLinkImagemDrive(val(8)),
                     resumo: mapaResumos,
                     audioArquivo: mapaAudios,
-                    langBase: langPrimario,
-                    ativoGeofence: geofenceAtivo // <--- Trava da Coluna N
+                    langBase: langPrimario
                 });
             }
         } catch (e) {}
@@ -675,8 +670,7 @@ function verificarProximidadePontos(posicao) {
             pontoMaisProximo = ponto;
         }
 
-        // TRAVA INTELIGENTE: Só aciona automaticamente se estiver ON na Coluna N
-        if (ponto.ativoGeofence && !pontosTocadosTour.has(ponto.id) && dist <= ponto.raio) {
+        if (!pontosTocadosTour.has(ponto.id) && dist <= ponto.raio) {
             pontosTocadosTour.add(ponto.id);
             
             registrarMetricaGA4('trigger_proximidade', 'Tour_Presencial', ponto.nome);
@@ -713,11 +707,12 @@ function formatarLinkImagemDrive(url) {
 
 window.onload = initMapOSM;
 </script>
-
 <!-- Trava de Inspeção e Menu de Contexto (F12 / Botão Direito) -->
-<script>
+  <script>
+    // Bloqueia o menu do botão direito
     document.addEventListener('contextmenu', event => event.preventDefault());
 
+    // Bloqueia atalhos de inspeção (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S)
     document.addEventListener('keydown', event => {
       if (
         event.key === 'F12' ||
@@ -728,6 +723,6 @@ window.onload = initMapOSM;
         event.stopPropagation();
       }
     });
-</script>  
+  </script>  
 </body>
 </html>
