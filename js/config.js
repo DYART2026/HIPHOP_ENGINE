@@ -15,8 +15,8 @@ const CITY_CONFIGS = {
     defaultCoords: [-22.9068, -43.1729],
   },
   "ipanema": {
-    cityName: "Rio de Janeiro",
-    folderName: "rio_de_janeiro",
+    cityName: "Ipanema",
+    folderName: "ipanema",
     gaMeasurementId: "G-CSC7E5E5QC", // Cole o ID real do GA4 do Rio
     sheetUrl: "https://docs.google.com/spreadsheets/d/1K_xyd--TX3TmKWgJRu6Du2TG_kQqrmHXsVBRr9Z1E08/gviz/tq?",
     defaultCoords: [-22.9068, -43.1729],
